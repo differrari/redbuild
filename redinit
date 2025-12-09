@@ -1,0 +1,14 @@
+#!/bin/bash
+
+echo "Initializing [REDACTED] project"
+
+touch $(pwd)/package.info
+
+echo """
+app_name = "Demo"
+app_author="[REDACTED]"
+""" > $(pwd)/package.info
+
+mkdir -p $(pwd)/resources
+
+echo "[REDACTED] project created"

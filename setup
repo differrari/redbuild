@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ "$SHELL" = "/bin/zsh" ]; then
+    CONFIG_FILE="$HOME/.zshrc"
+else
+    CONFIG_FILE="$HOME/.bashrc"
+fi
+
+echo "export REDMAKE=$(pwd)/Makefile" >> "$CONFIG_FILE"
+echo "export PATH=\$PATH:$(pwd)" >> "$CONFIG_FILE"
+
+source $CONFIG_FILE
