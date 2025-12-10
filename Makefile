@@ -82,7 +82,7 @@ clean:
 	rm -r $(EXEC_NAME).red
 
 cross:
-	$(MAKE) -f $(RED) -C $(shell pwd) ARCH=''
+	$(MAKE) -f $(REDBUILD)/Makefile -C $(shell pwd) ARCH=''
 # 	gdb -ex run $(OUT)
 	$(OUT)
 
