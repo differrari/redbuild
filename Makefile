@@ -71,7 +71,8 @@ compile:
 
 run: all
 ifeq ($(ARCH), aarch64-none-elf-)
-	cp -r $(PKG) $(FS_PATH)
+	rm -rf $(FS_PATH)
+	cp -rf $(PKG) $(FS_PATH)
 	$(MAKE) -C $(OS_DIR) run
 else
 	$(OUT)
