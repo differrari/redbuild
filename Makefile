@@ -68,7 +68,7 @@ prepare:
 
 compile:
 	# echo "$(SYSTEM)" > buildreport
-	$(CC) $(LDFLAGS) $(CFLAGS) $(INCLUDES) $(shell find . -name '*.c') $(LINKS) -o $(OUT)
+	$(CC) $(LDFLAGS) $(CFLAGS) -I. $(INCLUDES) $(shell find . -name '*.c') $(LINKS) -o $(OUT)
 	chmod +x $(OUT)
 
 run: all
