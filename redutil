@@ -1,0 +1,15 @@
+#!/bin/bash
+
+ccommands(){
+    bear -- make -f $REDBUILD/Makefile CC=aarch64-none-elf-gcc CXX=aarch64-none-elf-gcc -B
+}
+
+publish(){
+    cp $REDBUILD/Makefile ./Makefile
+}
+
+if [ "$1" == "bear" ]; then
+    ccommands
+elif [ "$1" == "publish" ]; then
+    publish
+fi
