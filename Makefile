@@ -3,10 +3,10 @@ include config.mk
 endif
 
 ARCH       ?= aarch64-none-elf-
-CC         := $(ARCH)gcc
-CXX        := $(ARCH)g++
-LD         := $(ARCH)ld
-DUMP	   := $(ARCH)objdump
+CC         ?= $(which $(ARCH)gcc)
+CXX        ?= $(which $(ARCH)g++)
+LD         ?= $(which $(ARCH)ld)
+DUMP	   ?= $(which $(ARCH)objdump)
 
 CFLAGS ?= -std=c99 -g -O0
 EXEC_NAME ?= $(notdir $(CURDIR))
