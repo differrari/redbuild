@@ -26,12 +26,12 @@ ifeq ($(ARCH), aarch64-none-elf-)
 	CFLAGS += -nostdlib -ffreestanding
 	LDFLAGS += -Wl,-emain 
 else
-	SYSTEM := native
     DEPS += \
 	local:../redxlib:../redxlib/redxlib.a \
 	local:../raylib/src/:../raylib/src/libraylib.a
 	
-	ifeq ($(SYSNAME),Darwin)
+	ifeq ($(shell uname),Darwin)
+		SYSTEM := macos
 	    DEPS += \
 			fw:Cocoa \
 			fw:IOKit \
@@ -39,7 +39,13 @@ else
 			fw:CoreFoundation \
 			sys:m \
 			sys:c
+    else ifeq($(shell uname), Linux)
+    	SYSTEM := linux
+    	LDFLAGS := -Wl,--start-group
+        DEPS += sys:m \
+        		sys:c
 	else ifeq($(OS),Windows_NT)
+		SYSTEM := windows
         # Windows dependencies
         DEPS += sys:opengl32 \
         		sys:gdi32 \
@@ -50,10 +56,6 @@ else
         CC := clang
         CCX := clang
         AR := llvm-ar
-    else
-    	LDFLAGS := -Wl,--start-group
-        DEPS += sys:m \
-        		sys:c
     endif
 endif
 
