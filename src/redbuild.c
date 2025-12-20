@@ -10,8 +10,13 @@
 #define _GNU_SOURCE
 #include <dirent.h>
 #include <pwd.h>
+#include <sys/stat.h>
 
 typedef enum { mac_os, linux_os, windows_os, redacted_os } os_name;
+
+typedef enum { package_red, package_bin, package_lib } package_type;
+
+char *output_name;
 
 #if __linux
 const os_name os = linux_os;
@@ -25,10 +30,15 @@ const os_name os = redacted_os;
 
 string link_libs;
 string sources;
+string ofiles;
 string includes;
 string comp_flags;
 string link_flags;
-char *output; 
+
+string output; 
+package_type output_type;
+
+char cwd[128];
 
 char *compiler = "";
 
@@ -63,18 +73,21 @@ void traverse_directory(char *directory, bool recursive, string *str){
             traverse_directory(s.data, true, str);
             string_free(s);
         }
-        if (strend(ent->d_name, ".c") == 0)
+        if (strend(ent->d_name, ".c") == 0){
             string_concat_inplace(str, string_format("%s/%s ", directory, ent->d_name));
+            string_concat_inplace(&ofiles, string_format("%v.o ", delimited_stringview(ent->d_name,0,strlen(ent->d_name)-2)));
+        }
     }
     closedir (dir);
 }
 
+static inline bool get_current_dir(){
+    return strlen(cwd) || getcwd(cwd, sizeof(cwd));
+}
+
 void find_files(char *ext, string *str){
-    char cwd[128];
-    if (getcwd(cwd, sizeof(cwd)) == NULL){
-        printf("NO PATH");
-        return;
-    }
+    
+    if (!get_current_dir()) { printf("No path"); return; }
     
     traverse_directory(cwd, true, str);
 }
@@ -114,6 +127,38 @@ void add_linker_flag(char *name){
     clinkedlist_push_front(link_flags_list, name);
 }
 
+void prepare_output(){
+    if (!get_current_dir()) { printf("No path"); return; }
+    output_name = cwd;
+    char* next = cwd;
+    do {
+        output_name = next;
+        next = seek_to(output_name, '/');
+    } while (*next);
+    
+    switch (output_type) {
+        case package_red:
+            //TODO: create copy recursive functions for copying directories (ffs)
+            string cmd1 = string_format("cp -rf package.info %s.red/package.info",output_name);
+            string cmd2 = string_format("cp -rf resources %s.red/resources",output_name);
+            system(cmd1.data);
+            system(cmd2.data);
+            string d = string_format("%s/%s.red",cwd,output_name);
+            mkdir(d.data,0777);
+            string_free(d);
+            string_free(cmd2);
+            string_free(cmd1);
+            output = string_format("%s.red/%s.elf",output_name, output_name);
+        break;
+        case package_bin:
+            output = string_format("%s.elf",output_name);
+        break;
+        case package_lib:
+            output = string_format("%s.a",output_name);
+        break;
+    }
+}
+
 void common(){
     find_files(".c",&sources);
     sys_deps = clinkedlist_create();
@@ -128,7 +173,8 @@ void common(){
     add_local_dependency("~/os/shared", "~/os/shared/libshared.a", "~/os/", true);
     add_local_dependency("~/detour", "~/detour/detour.a", "~/detour/", true);
     
-    output = "output";
+    output_type = package_lib;
+    prepare_output();
 }
 
 void cleanup(){
@@ -188,9 +234,23 @@ void comp(){
     clinkedlist_for_each(comp_flags_list, process_comp_flags);
     clinkedlist_for_each(link_flags_list, process_link_flags);
     memset(buff, 0, BUF_SIZE);
-    string_format_buf(buff, BUF_SIZE, "%s %s %s %s %s %s -o %s", compiler, comp_flags.data ? comp_flags.data : "", link_flags.data ? link_flags.data : "", includes.data ? includes.data : "",sources.data ? sources.data : "",link_libs.data ? link_libs.data : "", output);
-    printf("%s", buff);
+    switch (output_type) {
+        case package_lib:
+            string_format_buf(buff, BUF_SIZE, "%s %s %s -c %s", compiler, comp_flags.data ? comp_flags.data : "", includes.data ? includes.data : "",sources.data ? sources.data : "");
+            break;
+        case package_red:
+        case package_bin:
+            string_format_buf(buff, BUF_SIZE, "%s %s %s %s %s %s -o %s", compiler, comp_flags.data ? comp_flags.data : "", link_flags.data ? link_flags.data : "", includes.data ? includes.data : "",sources.data ? sources.data : "",link_libs.data ? link_libs.data : "", output.data);
+            break;
+    }
+    printf(buff);
     system(buff);
+    if (output_type == package_lib){
+        memset(buff, 0, BUF_SIZE);
+        string_format_buf(buff, BUF_SIZE, "ar rcs %s %s",output.data,ofiles.data);
+        printf(buff);
+        system(buff);
+    }
 }
 
 void cross_mod(){
