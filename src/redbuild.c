@@ -46,7 +46,13 @@ const char *homedir;
 
 typedef enum { dep_local, dep_framework, dep_system } dependency_type;
 
+typedef struct {
+    string name;
+    string output;
+} comp_file;
+
 clinkedlist_t *sys_deps;
+clinkedlist_t *comp_files;
 clinkedlist_t *comp_flags_list;
 clinkedlist_t *link_flags_list;
 
@@ -59,7 +65,9 @@ typedef struct {
     bool use_make;
 } dependency_t; 
 
-void traverse_directory(char *directory, bool recursive, string *str){
+typedef void (*dir_traverse)(const char *directory, const char* name);
+
+void traverse_directory(char *directory, bool recursive, dir_traverse func){
     DIR *dir;
     struct dirent *ent;
     if ((dir = opendir (directory)) == NULL) {
@@ -70,12 +78,11 @@ void traverse_directory(char *directory, bool recursive, string *str){
     while ((ent = readdir (dir)) != NULL) {
         if (recursive && ent->d_type == DT_DIR && !strstart(ent->d_name, ".")){
             string s = string_format("%s/%s",directory,ent->d_name);
-            traverse_directory(s.data, true, str);
+            traverse_directory(s.data, true, func);
             string_free(s);
         }
         if (strend(ent->d_name, ".c") == 0){
-            string_concat_inplace(str, string_format("%s/%s ", directory, ent->d_name));
-            string_concat_inplace(&ofiles, string_format("%v.o ", delimited_stringview(ent->d_name,0,strlen(ent->d_name)-2)));
+            func(directory, ent->d_name);
         }
     }
     closedir (dir);
@@ -85,11 +92,18 @@ static inline bool get_current_dir(){
     return strlen(cwd) || getcwd(cwd, sizeof(cwd));
 }
 
+void handle_files(const char *directory, const char *name){
+    comp_file *file = malloc(sizeof(comp_file));
+    file->name = string_format("%s/%s",directory,name);
+    file->output = string_format("%s/%v.o ", directory, delimited_stringview(name,0,strlen(name)-2));
+    clinkedlist_push_front(comp_files, file);
+}
+
 void find_files(char *ext, string *str){
     
     if (!get_current_dir()) { printf("No path"); return; }
     
-    traverse_directory(cwd, true, str);
+    traverse_directory(cwd, true, handle_files);
 }
 
 void add_dependency(dependency_type type, char *include, char *link, char* build, bool use_make){
@@ -138,13 +152,15 @@ void prepare_output(){
     
     switch (output_type) {
         case package_red: {
+            string d = string_format("%s/%s.red",cwd,output_name);
+            mkdir(d.data,0777);
             //TODO: create copy recursive functions for copying directories (ffs)
             string cmd1 = string_format("cp -rf package.info %s.red/package.info",output_name);
             string cmd2 = string_format("cp -rf resources %s.red/resources",output_name);
+            printf("%s",cmd1.data);
             system(cmd1.data);
+            printf("%s",cmd2.data);
             system(cmd2.data);
-            string d = string_format("%s/%s.red",cwd,output_name);
-            mkdir(d.data,0777);
             string_free(d);
             string_free(cmd2);
             string_free(cmd1);
@@ -160,11 +176,12 @@ void prepare_output(){
 }
 
 void common(){
-    find_files(".c",&sources);
     sys_deps = clinkedlist_create();
     comp_flags_list = clinkedlist_create();
     link_flags_list = clinkedlist_create();
+    comp_files = clinkedlist_create();
 
+    find_files(".c",&sources);
     if ((homedir = getenv("HOME")) == NULL) {
         homedir = getpwuid(getuid())->pw_dir;
     }
@@ -173,7 +190,7 @@ void common(){
     add_local_dependency("~/os/shared", "~/os/shared/libshared.a", "~/os/", true);
     add_local_dependency("~/detour", "~/detour/detour.a", "~/detour/", true);
     
-    output_type = package_lib;
+    output_type = package_red;
     prepare_output();
 }
 
@@ -222,8 +239,28 @@ void process_link_flags(void *data){
     else string_concat_inplace(&link_flags, string_format(" %s",flag));
 }
 
+void process_comp_files(void *data){
+    comp_file *file = (comp_file*)data;
+    if (!sources.data) sources = string_format(" %s",file->name);
+    else string_concat_inplace(&sources, string_format(" %s",file->name));
+}
+
+void process_out_files(void *data){
+    comp_file *file = (comp_file*)data;
+    if (!ofiles.data) ofiles = string_format(" %s",file->output);
+    else string_concat_inplace(&ofiles, string_format(" %s",file->output));
+}
+
 #define BUF_SIZE 1024
 char buff[BUF_SIZE];
+
+void lib_compile_individual(void *data){
+    comp_file *file = (comp_file*)data;
+    memset(buff, 0, BUF_SIZE);
+    string_format_buf(buff, BUF_SIZE, "%s %s %s -c %s -o %s", compiler, comp_flags.data ? comp_flags.data : "", includes.data ? includes.data : "",file->name.data, file->output.data);
+    printf("%s",buff);
+    system(buff);
+}
 
 void comp(){
     if (!strlen(compiler)){
@@ -234,20 +271,17 @@ void comp(){
     clinkedlist_for_each(comp_flags_list, process_comp_flags);
     clinkedlist_for_each(link_flags_list, process_link_flags);
     memset(buff, 0, BUF_SIZE);
-    switch (output_type) {
-        case package_lib:
-            string_format_buf(buff, BUF_SIZE, "%s %s %s -c %s", compiler, comp_flags.data ? comp_flags.data : "", includes.data ? includes.data : "",sources.data ? sources.data : "");
-            break;
-        case package_red:
-        case package_bin:
-            string_format_buf(buff, BUF_SIZE, "%s %s %s %s %s %s -o %s", compiler, comp_flags.data ? comp_flags.data : "", link_flags.data ? link_flags.data : "", includes.data ? includes.data : "",sources.data ? sources.data : "",link_libs.data ? link_libs.data : "", output.data);
-            break;
-    }
-    printf("%s",buff);
-    system(buff);
+    
     if (output_type == package_lib){
+        clinkedlist_for_each(comp_files, lib_compile_individual);
         memset(buff, 0, BUF_SIZE);
+        clinkedlist_for_each(comp_files, process_out_files);
         string_format_buf(buff, BUF_SIZE, "ar rcs %s %s",output.data,ofiles.data);
+        printf("%s",buff);
+        system(buff);
+    } else {
+        clinkedlist_for_each(comp_files, process_comp_files);
+        string_format_buf(buff, BUF_SIZE, "%s %s %s %s %s %s -o %s", compiler, comp_flags.data ? comp_flags.data : "", link_flags.data ? link_flags.data : "", includes.data ? includes.data : "",sources.data ? sources.data : "",link_libs.data ? link_libs.data : "", output.data);
         printf("%s",buff);
         system(buff);
     }
