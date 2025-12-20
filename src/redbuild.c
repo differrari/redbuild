@@ -130,14 +130,14 @@ void add_linker_flag(char *name){
 void prepare_output(){
     if (!get_current_dir()) { printf("No path"); return; }
     output_name = cwd;
-    char* next = cwd;
+    const char* next = cwd;
     do {
-        output_name = next;
+        output_name = (char*)next;
         next = seek_to(output_name, '/');
     } while (*next);
     
     switch (output_type) {
-        case package_red:
+        case package_red: {
             //TODO: create copy recursive functions for copying directories (ffs)
             string cmd1 = string_format("cp -rf package.info %s.red/package.info",output_name);
             string cmd2 = string_format("cp -rf resources %s.red/resources",output_name);
@@ -149,7 +149,7 @@ void prepare_output(){
             string_free(cmd2);
             string_free(cmd1);
             output = string_format("%s.red/%s.elf",output_name, output_name);
-        break;
+        } break;
         case package_bin:
             output = string_format("%s.elf",output_name);
         break;
@@ -243,12 +243,12 @@ void comp(){
             string_format_buf(buff, BUF_SIZE, "%s %s %s %s %s %s -o %s", compiler, comp_flags.data ? comp_flags.data : "", link_flags.data ? link_flags.data : "", includes.data ? includes.data : "",sources.data ? sources.data : "",link_libs.data ? link_libs.data : "", output.data);
             break;
     }
-    printf(buff);
+    printf("%s",buff);
     system(buff);
     if (output_type == package_lib){
         memset(buff, 0, BUF_SIZE);
         string_format_buf(buff, BUF_SIZE, "ar rcs %s %s",output.data,ofiles.data);
-        printf(buff);
+        printf("%s",buff);
         system(buff);
     }
 }
