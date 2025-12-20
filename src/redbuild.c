@@ -80,10 +80,7 @@ void traverse_directory(char *directory, bool recursive, dir_traverse func){
             string s = string_format("%s/%s",directory,ent->d_name);
             traverse_directory(s.data, true, func);
             string_free(s);
-        }
-        if (strend(ent->d_name, ".c") == 0){
-            func(directory, ent->d_name);
-        }
+        } else func(directory, ent->d_name);
     }
     closedir (dir);
 }
@@ -93,6 +90,7 @@ static inline bool get_current_dir(){
 }
 
 void handle_files(const char *directory, const char *name){
+    if (strend(name, ".c")) return;
     comp_file *file = malloc(sizeof(comp_file));
     file->name = string_format("%s/%s",directory,name);
     file->output = string_format("%s/%v.o ", directory, delimited_stringview(name,0,strlen(name)-2));
