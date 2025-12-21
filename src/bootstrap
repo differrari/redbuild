@@ -1,5 +1,4 @@
 #!/bin/bash
 
-gcc -DCROSS -I$HOME/os/shared/ redbuild.c $HOME/os/shared/libshared.a $HOME/redxlib/redxlib.a $HOME/raylib/src/libraylib.a -lc -lm -o build.r
-chmod +x build.r
-./build.r $@
+gcc -DCROSS -I$HOME/os/shared/ redbuild.c $HOME/os/shared/libshared.a $HOME/redxlib/redxlib.a $HOME/raylib/src/libraylib.a -lc -lm -o ../redbuild
+chmod +x ../redbuild

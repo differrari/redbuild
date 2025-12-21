@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#define _GNU_SOURCE
 #include <dirent.h>
 #include <pwd.h>
 
@@ -47,6 +48,26 @@ typedef struct {
     bool use_make;
 } dependency_t; 
 
+void traverse_directory(char *directory, bool recursive, string *str){
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir (directory)) == NULL) {
+        printf("Failed to open path %s",directory);
+        return;
+    }
+    
+    while ((ent = readdir (dir)) != NULL) {
+        if (recursive && ent->d_type == DT_DIR && !strstart(ent->d_name, ".")){
+            string s = string_format("%s/%s",directory,ent->d_name);
+            traverse_directory(s.data, true, str);
+            string_free(s);
+        }
+        if (strend(ent->d_name, ".c") == 0)
+            string_concat_inplace(str, string_format("%s/%s ", directory, ent->d_name));
+    }
+    closedir (dir);
+}
+
 void find_files(char *ext, string *str){
     char cwd[128];
     if (getcwd(cwd, sizeof(cwd)) == NULL){
@@ -54,18 +75,7 @@ void find_files(char *ext, string *str){
         return;
     }
     
-    DIR *dir;
-    struct dirent *ent;
-    if ((dir = opendir (cwd)) == NULL) {
-        printf("Failed to open path");
-        return;
-    }
-    
-    while ((ent = readdir (dir)) != NULL) {
-        if (strend(ent->d_name, ".c") == 0)
-            string_concat_inplace(str, string_format("%s ", ent->d_name));
-    }
-    closedir (dir);
+    traverse_directory(cwd, true, str);
 }
 
 void add_dependency(dependency_type type, char *include, char *link, char* build, bool use_make){
@@ -91,6 +101,10 @@ void add_system_framework(char *name){
     add_dependency(dep_framework, "", name, "", false);
 }
 
+void include_self(){
+    add_dependency(dep_local, ".", "", "", false);   
+}
+
 void add_compilation_flag(char *name){
     clinkedlist_push_front(comp_flags_list, name);
 }
@@ -109,10 +123,12 @@ void common(){
         homedir = getpwuid(getuid())->pw_dir;
     }
 
+    include_self();
     add_local_dependency("/home/di/os/shared", "/home/di/os/shared/libshared.a", "/home/di/os/", true);
+    add_local_dependency("/home/di/detour", "/home/di/detour/detour.a", "/home/di/detour/", true);
     
     link_libs = string_from_literal("/home/di/os/shared/libshared.a");
-    output = "build2.r";
+    output = "output";
 }
 
 void cleanup(){
