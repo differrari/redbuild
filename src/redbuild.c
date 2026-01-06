@@ -4,6 +4,7 @@
 #include "data_struct/linked_list.h"
 #include "std/string_slice.h"
 #include "data/toml.h"
+#include "data/csv.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -58,6 +59,7 @@ clinkedlist_t *comp_files;
 clinkedlist_t *preproc_flags_list;
 clinkedlist_t *comp_flags_list;
 clinkedlist_t *link_flags_list;
+clinkedlist_t *ignore_list;
 
 typedef struct {
     dependency_type type;
@@ -92,8 +94,15 @@ static inline bool get_current_dir(){
     return strlen(cwd) || getcwd(cwd, sizeof(cwd));
 }
 
+int comp_str(void *a, void *b){
+    return strcmp((char*)a,(char*)b);
+}
+
 void handle_files(const char *directory, const char *name){
     if (strend(name, ".c")) return;
+    if (clinkedlist_find(ignore_list, (char*)name, comp_str)) {
+        return;
+    }
     comp_file *file = malloc(sizeof(comp_file));
     file->name = string_format("%s/%s",directory,name);
     file->output = string_format("%s/%v.o ", directory, make_string_slice(name,0,strlen(name)-2));
@@ -180,6 +189,10 @@ void prepare_output(){
     }
 }
 
+void on_ignore(string_slice ignore){
+    clinkedlist_push_front(ignore_list, string_from_literal_length(ignore.data+1,ignore.length-2).data);
+}
+
 #define parse_toml(k,dest,func) if (strcmp_case(#k, key,true) == 0) dest.k = func(value,value_len)
 
 void parse_config_kvp(string_slice key, string_slice value, void *context){
@@ -197,7 +210,7 @@ void parse_config_kvp(string_slice key, string_slice value, void *context){
     }
     
     if (strstart_case("ignore", key.data, true) == key.length){
-        print("Should ignore %s",value);
+        read_csv(value, on_ignore);
     }
 }
 
@@ -207,6 +220,7 @@ void common(){
     comp_flags_list = clinkedlist_create();
     link_flags_list = clinkedlist_create();
     comp_files = clinkedlist_create();
+    ignore_list = clinkedlist_create();
     
     file fd = {};
     
