@@ -238,7 +238,6 @@ void common(){
     find_files(".c",&sources);
 
     include_self();
-    add_local_dependency("~/os/shared", "~/os/shared/libshared.a", "~/os/", true);
     add_local_dependency("~/detour", "~/detour/detour.a", "~/detour/", true);
     
     add_compilation_flag("no-format-invalid-specifier");
@@ -350,6 +349,7 @@ void cross_mod(){
     common();
     add_system_lib("c");
     add_system_lib("m");
+    add_local_dependency("~/os/shared", "~/os/shared/clibshared.a", "~/os/", true);
     add_local_dependency("~/raylib/src", "~/raylib/src/libraylib.a", "", false);
     add_local_dependency("~/redxlib", "~/redxlib/redxlib.a", "~/os/", true);
     add_precomp_flag("CROSS");
@@ -372,6 +372,7 @@ void cross_mod(){
 void red_mod(){
     common();
     compiler = "aarch64-none-elf-gcc";
+    add_local_dependency("~/os/shared", "~/os/shared/libshared.a", "~/os/", true);
     add_linker_flag("-Wl,-emain");
     comp();
 }
