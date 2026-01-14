@@ -389,7 +389,7 @@ int main(int argc, char *argv[]){
     
     printf("Current choice %s",argv[1]);
     
-    char *command = argv[1];//TODO: redacted currently does not have the executable at 0
+    char *command = argv[1];
     
     if (strcmp(command,"cross") == 0){
         cross_mod();
