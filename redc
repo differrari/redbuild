@@ -1,3 +1,16 @@
 #!/bin/bash
 
-make -f $REDBUILD/Makefile $@
+# make -f $REDBUILD/Makefile $@
+
+cred build.redb build.c
+
+FW=""
+
+if [ "$(uname)" = "Darwin" ]; then
+    FW="-framework Cocoa -framework IOKit -framework CoreVideo -framework CoreFoundation"
+fi
+
+gcc build.c $HOME/redbuild/redbuild.c -I. -I../redbuild -I../os/shared ../os/shared/clibshared.a ../redxlib/redxlib.a ../raylib/src/libraylib.a $FW -o build
+if [ $1 = "build" ]; then
+./build
+fi

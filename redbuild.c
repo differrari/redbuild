@@ -1,0 +1,411 @@
+#include "redbuild.h"
+#include "../os/shared/data_struct/linked_list.h"
+#include "../os/shared/std/string.h"
+#include "../os/shared/std/string_slice.h"
+#include "../os/shared/syscalls/syscalls.h"
+#include "files/helpers.h"
+
+clinkedlist_t *compile_list;
+clinkedlist_t *preproc_flags_list;
+clinkedlist_t *comp_flags_list;
+clinkedlist_t *link_flags_list_f;
+clinkedlist_t *link_flags_list_b;
+clinkedlist_t *includes;
+clinkedlist_t *link_libs;
+clinkedlist_t *ignore_list;
+clinkedlist_t *out_files;
+
+target selected_target;
+
+char *output_name;
+const char *homedir;
+string output;
+
+char *chosen_compiler = 0;
+
+// #define DEBUG
+#ifdef DEBUG
+#define redbuild_debug(fmt, ...) print(fmt, ##__VA_ARGS__)
+#else 
+#define redbuild_debug(fmt, ...)
+#endif
+
+#if __linux
+#define native_target target_linux
+#elif _WIN32
+#define native_target target_windows
+#elif (__APPLE__)
+#define native_target target_mac
+#else 
+#define native_target target_redacted
+#endif
+
+static target compilation_target;
+static package_type pkg_type;
+
+void free_strings(void *data){
+    string *s = (string*)data;
+    string_free(*s);
+}
+
+void free_deps(void *data){
+    dependency_t *dep = (dependency_t*)data;
+    free_sized(dep, sizeof(dependency_t));
+}
+
+void push_lit(clinkedlist_t *list, const char* lit){
+    string *s = malloc(sizeof(string));
+    *s = string_from_literal(lit);
+    clinkedlist_push(list, s);
+}
+
+void cross_mod(){
+    redbuild_debug("Native platform setup");
+    add_system_lib("c");
+    add_system_lib("m");
+    add_local_dependency("~/os/shared", "~/os/shared/clibshared.a", "~/os/", true);
+    add_local_dependency("~/raylib/src", "~/raylib/src/libraylib.a", "", false);
+    add_local_dependency("~/redxlib", "~/redxlib/redxlib.a", "~/os/", true);
+    add_precomp_flag("CROSS");
+    redbuild_debug("Common platform setup done");
+    switch (compilation_target) {
+        case target_linux: add_linker_flag("-Wl,--start-group", false); add_linker_flag("-Wl,--end-group", true);break;
+        case target_windows: add_linker_flag("-fuse-ld=lld", false); break;
+        case target_mac: {
+            add_system_framework("Cocoa");
+            add_system_framework("IOKit");
+            add_system_framework("CoreVideo");
+            add_system_framework("CoreFoundation");
+        } break;
+        default: break;
+    }
+    redbuild_debug("Platform specific setup done. Selecting compiler");
+    chosen_compiler = "gcc";
+    redbuild_debug("Compiler selected");
+    redbuild_debug("Compiler %s",chosen_compiler);
+}
+
+void red_mod(){
+    chosen_compiler = "aarch64-none-elf-gcc";
+    add_local_dependency("~/os/shared", "~/os/shared/libshared.a", "~/os/", true);
+    add_linker_flag("-Wl,-emain",false);
+}
+
+void common(){
+    redbuild_debug("Getting home dir");
+    homedir = gethomedir();
+    redbuild_debug("Home dir %s",homedir);
+    
+    include_self();
+    
+    add_compilation_flag("no-format-invalid-specifier");
+    add_compilation_flag("no-format-extra-args");
+}
+
+void set_target(target t){
+    if (t == target_native)
+        compilation_target = native_target;
+    else 
+        compilation_target = t;
+    redbuild_debug("Target type %i",compilation_target);
+}
+
+void set_name(const char *out_name){
+    output_name = (char*)out_name;
+}
+
+void prepare_output(){
+    if (!output_name) {
+        print("No output name specified");
+        return;
+    }
+    char *cwd = get_current_dir();
+    switch (pkg_type) {
+        case package_red: {
+            //TODO: %s feel dangerous here
+            string d = string_format("mkdir -p %s/%s.red",cwd,output_name);
+            system(d.data);
+            //TODO: create copy recursive functions for copying directories (ffs)
+            string cmd1 = string_format("cp -rf package.info %s.red/package.info",output_name);
+            string cmd2 = string_format("cp -rf resources %s.red/resources",output_name);
+            printf("%s",cmd1.data);
+            system(cmd1.data);
+            printf("%s",cmd2.data);
+            system(cmd2.data);
+            string_free(d);
+            string_free(cmd2);
+            string_free(cmd1);
+            output = string_format("%s.red/%s.elf",output_name, output_name);
+        } break;
+        case package_bin:
+            output = string_format("%s.elf",output_name);
+        break;
+        case package_lib:
+            output = string_format("%s.a",output_name);
+        break;
+    }
+    redbuild_debug("Output environment ready");
+}
+
+void set_package_type(package_type type){
+    pkg_type = type;
+    redbuild_debug("Package type %i",pkg_type);
+}
+
+void new_module(const char *name){
+    printf("Compiling target %s",name);
+    if (compile_list){
+        if (compile_list->length) clinkedlist_for_each(compile_list, free_strings);
+        clinkedlist_destroy(compile_list);
+    }
+    
+    if (preproc_flags_list){
+        if (preproc_flags_list->length) clinkedlist_for_each(preproc_flags_list, free_strings);
+        clinkedlist_destroy(preproc_flags_list);
+    }
+    
+    if (includes){
+        if (includes->length) clinkedlist_for_each(includes, free_strings);
+        clinkedlist_destroy(includes);
+    }
+    
+    if (link_libs){
+        if (link_libs->length) clinkedlist_for_each(link_libs, free_strings);
+        clinkedlist_destroy(link_libs);
+    }
+    
+    if (comp_flags_list){
+        if (comp_flags_list->length) clinkedlist_for_each(comp_flags_list, free_strings);
+        clinkedlist_destroy(comp_flags_list);
+    }
+    
+    if (link_flags_list_f){
+        if (link_flags_list_f->length) clinkedlist_for_each(link_flags_list_f, free_strings);
+        clinkedlist_destroy(link_flags_list_f);
+    }
+    
+    if (link_flags_list_b){
+        if (link_flags_list_b->length) clinkedlist_for_each(link_flags_list_b, free_strings);
+        clinkedlist_destroy(link_flags_list_b);
+    }
+    
+    if (ignore_list){
+        if (ignore_list->length) clinkedlist_for_each(ignore_list, free_strings);
+        clinkedlist_destroy(ignore_list);
+    }
+    
+    if (out_files){
+        if (out_files->length) clinkedlist_for_each(out_files, free_strings);
+        clinkedlist_destroy(out_files);
+    }
+    
+    redbuild_debug("Finished cleanup");
+    
+    compile_list = clinkedlist_create();
+    preproc_flags_list = clinkedlist_create();
+    includes = clinkedlist_create();
+    link_libs = clinkedlist_create();
+    comp_flags_list = clinkedlist_create();
+    link_flags_list_f = clinkedlist_create();
+    link_flags_list_b = clinkedlist_create();
+    ignore_list = clinkedlist_create();
+    out_files = clinkedlist_create();
+}
+
+bool source(const char *name){
+    redbuild_debug("Adding %s",name);
+    if (!compile_list){ printf("Error: new_module not called"); return false; }
+    push_lit(compile_list, name);
+    return false;
+}
+
+void add_dependency(dependency_type type, char *include, char *link, char* build, bool use_make){
+    if (include && strlen(include)){
+        string s = string_replace_character(include, '~', (char*)homedir);
+        string sf = string_format("-I%s ",s.data);
+        push_lit(includes, sf.data);
+        string_free(s);
+        string_free(sf);
+    } 
+    if (link && strlen(link)){
+        string l = {};
+        string s = string_replace_character(link, '~', (char*)homedir);
+        switch (type) {
+            case dep_local: l = string_format(" %s", s.data); break;
+            case dep_system: l = string_format(" -l%s",s.data); break;
+            case dep_framework: l = string_format(" -framework %s",s.data); break;
+        }
+        if (l.data){
+            push_lit(link_libs, l.data);
+            string_free(l);
+        }
+        string_free(s);
+    } 
+}
+
+void add_local_dependency(char *include, char *link, char* build, bool use_make){
+    add_dependency(dep_local, include, link, build, use_make);
+}
+
+void add_system_lib(char *name){
+    add_dependency(dep_system, "", name, "", false);
+}
+
+void add_system_framework(char *name){
+    add_dependency(dep_framework, "", name, "", false);
+}
+
+void include_self(){
+    add_dependency(dep_local, ".", "", "", false);   
+}
+
+void add_precomp_flag(char *name){
+    push_lit(preproc_flags_list, name);
+}
+
+void add_compilation_flag(char *name){
+    push_lit(comp_flags_list, name);
+}
+
+void add_linker_flag(char *name, bool back){
+    push_lit(back ? link_flags_list_b : link_flags_list_f, name);
+}
+
+typedef struct {
+    char* buffer;
+    size_t buffer_size;
+    size_t limit;
+    bool can_grow;
+    bool circular;
+    uintptr_t cursor;
+} buffer;
+
+buffer buffer_create(size_t size, bool can_grow, bool circular){
+    return (buffer){
+        .buffer = malloc(size),
+        .buffer_size = 0,
+        .limit = size,
+        .can_grow = can_grow,
+        .circular = circular,
+        .cursor = 0,
+    };
+}
+
+void buffer_write(buffer *buf, char* fmt, ...){
+    __attribute__((aligned(16))) va_list args;
+    va_start(args, fmt); 
+    size_t n = string_format_va_buf(fmt, buf->buffer+buf->cursor, buf->limit-buf->cursor, args);
+    buf->cursor += n;
+    buf->buffer_size += n;
+    if (buf->can_grow && buf->buffer_size > buf->limit-256){
+        size_t new_size = buf->limit;
+        buf->buffer = realloc_sized(buf->buffer, buf->limit, new_size);
+        buf->limit = new_size;
+    }
+    //TODO: circular
+    va_end(args);
+}
+
+void buffer_write_space(buffer *buf){
+    buffer_write(buf, " ");
+}
+
+buffer buf;
+
+void list_strings(void *data){
+    string *s = (string*)data;
+    buffer_write(&buf, s->data);
+    buffer_write_space(&buf);
+}
+
+void process_preproc_flags(void *data){
+    string *s = (string*)data;
+    buffer_write(&buf, "-D%s",s->data);
+    buffer_write_space(&buf);
+}
+
+void process_comp_flags(void *data){
+    string *s = (string*)data;
+    buffer_write(&buf, "-W%s",s->data);
+    buffer_write_space(&buf);
+}
+
+//TODO: lib support
+bool compile(){
+    redbuild_debug("Setting up output...");
+    prepare_output();
+    redbuild_debug("Target set. Common setup...");
+    common();
+    redbuild_debug("Common setup done. Platform-specific setup...");
+    
+    if (compilation_target == target_redacted) red_mod();
+    else cross_mod();
+    
+    redbuild_debug("Platform-specific setup done.");
+    redbuild_debug("Beginning compilation process");
+    buf = buffer_create(1024, true, false);
+    buffer_write(&buf, chosen_compiler);
+    buffer_write_space(&buf);
+    
+    clinkedlist_for_each(preproc_flags_list, process_preproc_flags);
+    clinkedlist_for_each(link_flags_list_f, list_strings);
+    clinkedlist_for_each(includes, list_strings);
+    clinkedlist_for_each(compile_list, list_strings);
+    clinkedlist_for_each(link_libs, list_strings);
+    clinkedlist_for_each(comp_flags_list, process_comp_flags);
+    clinkedlist_for_each(link_flags_list_b, list_strings);
+    
+    buffer_write(&buf, "-o %s",output_name);
+    redbuild_debug("Final compilation command:");
+    printl(buf.buffer);
+    print("Compiling");
+    system(buf.buffer);
+    return true;
+}
+
+int run(){
+    string s = string_format("./%s",output_name);
+    system(s.data);
+    string_free(s);
+}
+
+int comp_str(void *a, void *b){
+    return strcmp(((string*)a)->data,(char*)b);
+}
+
+char *extension;
+
+void handle_files(const char *directory, const char *name){
+    if (strend(name, extension)) return;
+    if (clinkedlist_find(ignore_list, (char*)name, comp_str)) {
+        redbuild_debug("Ignoring %s",name);
+        return;
+    }
+    string n = string_format("%s/%s",directory,name);
+    push_lit(compile_list, n.data);
+    
+    string o = string_format("%s/%v.o ", directory, make_string_slice(name,0,strlen(name)-2));
+    push_lit(out_files, o.data);
+}
+
+void find_files(char *ext){
+    
+    redbuild_debug("Adding all non-ignored files with %s extension",ext);
+    
+    char *cwd = get_current_dir();
+    if (!cwd) { printf("No path"); return; }
+    
+    traverse_directory(cwd, true, handle_files);
+}
+
+bool ignore_source(const char *name){
+    redbuild_debug("Will ignore %s",name);
+    push_lit(ignore_list, name);
+    return false;
+}
+
+bool source_all(const char *ext){
+    extension = (char*)ext;
+    find_files((char*)ext);
+    return false;
+}
