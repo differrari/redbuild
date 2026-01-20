@@ -4,6 +4,7 @@
 #include "../os/shared/std/string_slice.h"
 #include "../os/shared/syscalls/syscalls.h"
 #include "files/helpers.h"
+#include "files/buffer.h"
 
 clinkedlist_t *compile_list;
 clinkedlist_t *preproc_flags_list;
@@ -220,6 +221,7 @@ bool source(const char *name){
 }
 
 void add_dependency(dependency_type type, char *include, char *link, char* build, bool use_make){
+    if (!homedir) homedir = gethomedir();
     if (include && strlen(include)){
         string s = string_replace_character(include, '~', (char*)homedir);
         string sf = string_format("-I%s ",s.data);
