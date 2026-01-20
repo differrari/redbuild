@@ -90,6 +90,8 @@ void red_mod(){
     chosen_compiler = "aarch64-none-elf-gcc";
     add_local_dependency("~/os/shared", "~/os/shared/libshared.a", "~/os/", true);
     add_linker_flag("-Wl,-emain",false);
+    add_linker_flag("-ffreestanding", false);
+    add_linker_flag("-nostdlib", false);
 }
 
 void common(){
@@ -372,4 +374,10 @@ bool source_all(const char *ext){
     extension = (char*)ext;
     find_files((char*)ext);
     return false;
+}
+
+void install(const char *location){
+    string s = string_format("cp -r %s.red %s", output_name, location);
+    system(s.data);
+    string_free(s);
 }

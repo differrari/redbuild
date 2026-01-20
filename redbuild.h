@@ -31,6 +31,7 @@ void new_module(const char *name);
 bool source(const char *name);
 bool compile();
 int run();
+void install(const char *location);
 
 void add_dependency(dependency_type type, char *include, char *link, char* build, bool use_make);
 void add_local_dependency(char *include, char *link, char* build, bool use_make);
