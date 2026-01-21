@@ -30,6 +30,7 @@ void set_name(const char *out_name);
 void new_module(const char *name);
 bool source(const char *name);
 bool compile();
+bool cred_compile();
 int run();
 void install(const char *location);
 

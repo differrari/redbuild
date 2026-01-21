@@ -335,6 +335,17 @@ int run(){
     return result;
 }
 
+bool cred_compile(){
+    buf = buffer_create(1024, true, false);
+    buffer_write_const(&buf, "cred ");
+    clinkedlist_for_each(compile_list, list_strings);
+    buffer_write(&buf, "-o %s",output_name);
+    redbuild_debug("Final compilation command:");
+    printl(buf.buffer);
+    print("Generating C code");
+    return system(buf.buffer) == 0;
+}
+
 int comp_str(void *a, void *b){
     return strcmp(((string*)a)->data,(char*)b);
 }

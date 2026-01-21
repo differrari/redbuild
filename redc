@@ -2,7 +2,7 @@
 
 # make -f $REDBUILD/Makefile $@
 
-cred build.redb build.c
+cred build.redb -o build.c
 
 FW=""
 
