@@ -4,8 +4,6 @@ echo "Initializing [REDACTED] project"
 
 cp $REDBUILD/package.info $(pwd)/package.info
 
-cp $REDBUILD/config.mk $(pwd)/config.mk
-
 cp $REDBUILD/gitignore $(pwd)/.gitignore
 
 mkdir -p $(pwd)/resources

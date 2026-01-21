@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ "$1" != "c" ]; then
+    cred build.redb -o build.c
+fi
+
+FW=""
+
+if [ "$(uname)" = "Darwin" ]; then
+    FW="-framework Cocoa -framework IOKit -framework CoreVideo -framework CoreFoundation"
+fi
+
+gcc build.c $REDBUILD/redbuild.c -I. -I$REDBUILD -I../redlib ../redlib/clibshared.a ~/redxlib/redxlib.a ../raylib/src/libraylib.a -lm -lc $FW -o build

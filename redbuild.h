@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../os/shared/types.h"
+#include "../redlib/types.h"
 
 typedef enum {
     target_redacted,

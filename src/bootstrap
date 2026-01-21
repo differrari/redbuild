@@ -1,4 +1,0 @@
-#!/bin/bash
-
-gcc -Wno-format-invalid-specifier -DCROSS -I$HOME/os/shared/ redbuild.c $HOME/os/shared/clibshared.a $HOME/redxlib/redxlib.a $HOME/raylib/src/libraylib.a -lc -lm -framework Cocoa -framework IOKit -framework CoreVideo -framework CoreFoundation -o ../redbuild
-chmod +x ../redbuild

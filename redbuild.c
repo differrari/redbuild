@@ -1,8 +1,8 @@
 #include "redbuild.h"
-#include "../os/shared/data_struct/linked_list.h"
-#include "../os/shared/std/string.h"
-#include "../os/shared/std/string_slice.h"
-#include "../os/shared/syscalls/syscalls.h"
+#include "../redlib/data_struct/linked_list.h"
+#include "../redlib/std/string.h"
+#include "../redlib/std/string_slice.h"
+#include "../redlib/syscalls/syscalls.h"
 #include "files/helpers.h"
 #include "files/buffer.h"
 
@@ -64,9 +64,9 @@ void cross_mod(){
     redbuild_debug("Native platform setup");
     add_system_lib("c");
     add_system_lib("m");
-    add_local_dependency("~/os/shared", "~/os/shared/clibshared.a", "~/os/", true);
+    add_local_dependency("~/redlib", "~/redlib/clibshared.a", "~/redlib", true);
     add_local_dependency("~/raylib/src", "~/raylib/src/libraylib.a", "", false);
-    add_local_dependency("~/redxlib", "~/redxlib/redxlib.a", "~/os/", true);
+    add_local_dependency("~/redxlib", "~/redxlib/redxlib.a", "~/redlib", true);
     add_precomp_flag("CROSS");
     redbuild_debug("Common platform setup done");
     switch (compilation_target) {
@@ -88,7 +88,7 @@ void cross_mod(){
 
 void red_mod(){
     chosen_compiler = "aarch64-none-elf-gcc";
-    add_local_dependency("~/os/shared", "~/os/shared/libshared.a", "~/os/", true);
+    add_local_dependency("~/redlib", "~/redlib/libshared.a", "~/os/", true);
     add_linker_flag("-Wl,-emain",false);
     add_linker_flag("-ffreestanding", false);
     add_linker_flag("-nostdlib", false);

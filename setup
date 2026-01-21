@@ -7,6 +7,6 @@ else
 fi
 
 echo "export REDBUILD=$(pwd)" >> "$CONFIG_FILE"
-echo "export PATH=\$PATH:$(pwd)" >> "$CONFIG_FILE"
+echo "export PATH=\$PATH:$(pwd)/utils" >> "$CONFIG_FILE"
 
 source $CONFIG_FILE
