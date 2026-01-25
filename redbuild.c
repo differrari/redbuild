@@ -1,5 +1,5 @@
 #include "redbuild.h"
-#include "../redlib/data_struct/linked_list.h"
+#include "../redlib/data/struct/linked_list.h"
 #include "../redlib/std/string.h"
 #include "../redlib/std/string_slice.h"
 #include "../redlib/syscalls/syscalls.h"
