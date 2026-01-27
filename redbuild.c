@@ -335,6 +335,7 @@ bool compile(){
 buffer ccbuf;
 
 void emit_argument(string_slice slice){
+    if (!slice.length) return;
     buffer_write(&ccbuf,"\"%v\"",slice);
     buffer_write(&ccbuf,",\n");
 }
