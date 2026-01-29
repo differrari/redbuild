@@ -27,6 +27,7 @@ void set_target(target t);
 void set_package_type(package_type type);
 void set_name(const char *out_name);
 
+void rebuild_self();
 void new_module(const char *name);
 bool source(const char *name);
 bool compile();
@@ -35,6 +36,7 @@ bool cred_compile();
 bool quick_cred(const char *input_file, const char *output_file);
 int run();
 void install(const char *location);
+bool make_run(const char *directory, const char *command);
 
 void add_dependency(dependency_type type, char *include, char *link, char* build, bool use_make);
 void add_local_dependency(char *include, char *link, char* build, bool use_make);

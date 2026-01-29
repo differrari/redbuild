@@ -433,3 +433,14 @@ void install(const char *location){
     system(s.data);
     string_free(s);
 }
+
+void rebuild_self(){
+    
+}
+
+bool make_run(const char *directory, const char *command){
+    buffer b = buffer_create(256, buffer_can_grow);
+    buffer_write(&b, "make -C %s %s",directory, command);
+    redbuild_debug("Final make command %s",b.buffer);
+    return system(b.buffer) == 0;
+}
