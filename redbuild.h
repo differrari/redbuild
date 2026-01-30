@@ -27,6 +27,7 @@ void set_target(target t);
 void set_package_type(package_type type);
 void set_name(const char *out_name);
 
+void gen_symbols();
 void rebuild_self();
 void new_module(const char *name);
 bool source(const char *name);

@@ -30,6 +30,7 @@ static package_type pkg_type;
 buffer buf;
 buffer ccbuf;
 char *extension;
+bool debug_syms;
 
 // #define DEBUG
 #ifdef DEBUG
@@ -217,6 +218,7 @@ void new_module(const char *name){
     link_flags_list_b = clinkedlist_create();
     ignore_list = clinkedlist_create();
     out_files = clinkedlist_create();
+    debug_syms = false;
 }
 
 bool source(const char *name){
@@ -315,6 +317,10 @@ void prepare_command(){
     buffer_write_space(&buf);
     
     clinkedlist_for_each(preproc_flags_list, process_preproc_flags);
+    
+    if (debug_syms)
+        buffer_write_const(&buf," -g ");
+    
     clinkedlist_for_each(link_flags_list_f, list_strings);
     clinkedlist_for_each(includes, list_strings);
     clinkedlist_for_each(compile_list, list_strings);
@@ -443,4 +449,8 @@ bool make_run(const char *directory, const char *command){
     buffer_write(&b, "make -C %s %s",directory, command);
     redbuild_debug("Final make command %s",b.buffer);
     return system(b.buffer) == 0;
+}
+
+void gen_symbols(){
+    debug_syms = true;
 }
