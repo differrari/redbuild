@@ -89,7 +89,7 @@ void free_deps(void *data){
 }
 
 void push_lit(clinkedlist_t *list, const char* lit){
-    string *s = malloc(sizeof(string));
+    string *s = zalloc(sizeof(string));
     *s = string_from_literal(lit);
     clinkedlist_push(list, s);
 }
