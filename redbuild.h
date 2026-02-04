@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../redlib/types.h"
-#include "../redlib/std/string.h"
-#include "../redlib/std/string_slice.h"
-#include "../redlib/syscalls/syscalls.h"
+#include "types.h"
+#include "std/string.h"
+#include "std/string_slice.h"
+#include "syscalls/syscalls.h"
 #include "files/helpers.h"
 #include "files/buffer.h"
 #include "alloc/allocate.h"
@@ -29,7 +29,7 @@ typedef struct {
 
 typedef enum { package_red, package_bin, package_lib } package_type;
 
-#include "../redlib/data/struct/linked_list.h"
+#include "data/struct/linked_list.h"
 
 typedef struct redb_ctx {
     clinkedlist_t *compile_list;
