@@ -7,6 +7,7 @@
 #include "files/helpers.h"
 #include "files/buffer.h"
 #include "alloc/allocate.h"
+#include "data/struct/linked_list.h"
 
 typedef enum {
     target_redacted,
@@ -28,8 +29,6 @@ typedef struct {
 } dependency_t; 
 
 typedef enum { package_red, package_bin, package_lib } package_type;
-
-#include "data/struct/linked_list.h"
 
 typedef struct redb_ctx {
     clinkedlist_t *compile_list;
@@ -54,11 +53,11 @@ typedef struct redb_ctx {
     package_type pkg_type;
     
     buffer buf;
-    buffer ccbuf;
     char *extension;
     bool debug_syms;
 } redb_ctx;
 
+static buffer ccbuf;
 static redb_ctx *ctx;
 
 // #define DEBUG
@@ -183,7 +182,7 @@ void prepare_output(){
             ctx->output = string_format("%s.red/%s.elf",ctx->output_name, ctx->output_name);
         } break;
         case package_bin:
-            ctx->output = string_format("%s.elf",ctx->output_name);
+            ctx->output = string_format("%s",ctx->output_name);
         break;
         case package_lib:
             ctx->output = string_format("%s.a",ctx->output_name);
@@ -383,27 +382,34 @@ bool compile(){
 
 void emit_argument(string_slice slice){
     if (!slice.length) return;
-    buffer_write(&ctx->ccbuf,"\"%v\"",slice);
-    buffer_write(&ctx->ccbuf,",\n");
+    buffer_write(&ccbuf,"\t\"%v\"",slice);
+    buffer_write(&ccbuf,",\n");
 }
 
-bool gen_compile_commands(){
-    // prepare_command();
-    ctx->ccbuf = buffer_create(ctx->buf.buffer_size + 1024, buffer_can_grow);
+bool gen_compile_commands(const char *file){
+    if (!ccbuf.buffer){
+        ccbuf = buffer_create(ctx->buf.buffer_size + 1024, buffer_can_grow);
+        buffer_write(&ccbuf,"[");
+    } else buffer_write(&ccbuf,",");
+    
     //TODO: use code formatter
-    buffer_write(&ctx->ccbuf,"[\{\n\"arguments\": [\n");
+    buffer_write(&ccbuf,"{\n\"arguments\": [\n");
     string_split(ctx->buf.buffer,' ',emit_argument);
-    ctx->ccbuf.buffer_size -= 2;//TODO: one of my stupidest hacks right here
-    ctx->ccbuf.cursor -= 2;
-    buffer_write(&ctx->ccbuf,"\n],\n\"directory\": \"");
-    buffer_write(&ctx->ccbuf,get_current_dir());
-    buffer_write(&ctx->ccbuf,"\",\n\"file\": \"");
-    buffer_write(&ctx->ccbuf,get_current_dir());
-    buffer_write(&ctx->ccbuf,"/main.c\",\n\"output\": \"");
-    buffer_write(&ctx->ccbuf,get_current_dir());
-    buffer_write(&ctx->ccbuf,"/%s\"}]",ctx->output);
-    write_full_file("compile_commands.json",ctx->ccbuf.buffer,ctx->ccbuf.buffer_size);
+    ccbuf.buffer_size -= 2;//TODO: one of my stupidest hacks right here
+    ccbuf.cursor -= 2;
+    buffer_write(&ccbuf,"\n],\n\"directory\": \"");
+    buffer_write(&ccbuf,get_current_dir());
+    buffer_write(&ccbuf,"\",\n\"file\": \"");
+    buffer_write(&ccbuf,get_current_dir());
+    buffer_write(&ccbuf,"/%s\",\n\"output\": \"",file ? file : "main.c");
+    buffer_write(&ccbuf,get_current_dir());
+    buffer_write(&ccbuf,"/%s\"}",ctx->output);
     return true;
+}
+
+bool emit_compile_commands(){
+    buffer_write(&ccbuf,"]");
+    write_full_file("compile_commands.json",ccbuf.buffer,ccbuf.buffer_size);
 }
 
 int run(){
@@ -477,13 +483,29 @@ bool source_all(const char *ext){
 }
 
 void install(const char *location){
-    string s = string_format("cp -r %s.red %s", ctx->output_name, location);
+    string s = string_format("cp -r %s%s %s", ctx->output_name,ctx->pkg_type == package_red ? ".red" : "", location);
     system(s.data);
     string_free(s);
 }
 
 void rebuild_self(){
+    new_module("redbuild");
+    set_name("build");
     
+    quick_cred("build.redb", "build.c");
+    
+    set_target(target_native);
+    set_package_type(package_bin);
+    
+    add_local_dependency("~/redbuild", "~/redbuild/redbuild.h", "~/redbuild", false);
+    
+    source("build.c");
+    
+	system("mv build build.old");
+    if (compile()){
+	    gen_compile_commands("build.c");
+		system("rm -f build.old");
+    } else system("mv build.old build");
 }
 
 bool make_run(const char *directory, const char *command){
