@@ -84,7 +84,7 @@ void free_strings(void *data){
 
 void free_deps(void *data){
     dependency_t *dep = (dependency_t*)data;
-    free_sized(dep, sizeof(dependency_t));
+    release(dep);
 }
 
 void push_lit(clinkedlist_t *list, const char* lit){
@@ -358,8 +358,9 @@ void prepare_command(){
     
     clinkedlist_for_each(ctx->preproc_flags_list, process_preproc_flags);
     
-    if (ctx->debug_syms)
-        buffer_write_const(&ctx->buf," -g ");
+    if (ctx->debug_syms){
+        buffer_write_const(&ctx->buf," -g -fsanitize=address ");
+    }
     
     clinkedlist_for_each(ctx->link_flags_list_f, list_strings);
     clinkedlist_for_each(ctx->includes, list_strings);
@@ -488,6 +489,10 @@ void install(const char *location){
     string_free(s);
 }
 
+void debug(){
+    ctx->debug_syms = true;
+}
+
 void rebuild_self(){
     new_module("redbuild");
     set_name("build");
@@ -498,6 +503,7 @@ void rebuild_self(){
     set_package_type(package_bin);
     
     add_local_dependency("~/redbuild", "~/redbuild/redbuild.h", "~/redbuild", false);
+    debug();
     
     source("build.c");
     
@@ -513,8 +519,4 @@ bool make_run(const char *directory, const char *command){
     buffer_write(&b, "make -C %s %s",directory, command);
     redbuild_debug("Final make command %s",b.buffer);
     return system(b.buffer) == 0;
-}
-
-void gen_symbols(){
-    ctx->debug_syms = true;
 }
