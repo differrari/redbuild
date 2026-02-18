@@ -502,7 +502,7 @@ void rebuild_self(){
     set_target(target_native);
     set_package_type(package_bin);
     
-    add_local_dependency("~/redbuild", "~/redbuild/redbuild.h", "~/redbuild", false);
+    add_local_dependency("~/redbuild", "", "", false);
     debug();
     
     source("build.c");
