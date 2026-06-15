@@ -144,7 +144,7 @@
 
 (defun lib-command (includes src) (uiop:run-program (list "gcc" includes "-c" src "-o" (replace-extension src "o")) :output t))
 
-(defun lib-assemble (srcs output) (uiop:run-program (list "ar" "rcs" output (flatten-args srcs))))
+(defun lib-assemble (srcs output) (nth-value 2 (uiop:run-program (list "ar" "rcs" output (flatten-args srcs)))))
 
 (defun lib-compile (mod) 
     (let ((libs (flatten-args (remove nil (mapcar #'lib-to-include (redmod-libraries mod))))))
@@ -156,7 +156,11 @@
 (defun redb_compile (mod &key success fail) "Compile a redbuild module"
     (print "Beginning compilation")
     (case (redmod-type mod)
-        (:lib (lib-compile mod))
+        (:lib (if (= (lib-compile mod) 0) 
+            (funcall success) 
+            (funcall fail)
+            )
+        )
         (otherwise (if (= (run_prog (flatten-args (make-command mod))) 0) 
             (funcall success) 
             (funcall fail)
@@ -190,7 +194,7 @@
         :success (lambda () 
             (redb_fallback mod)
             (redb_compile_commands mod)
-            (if (eq run t) (redb_run mod))
+            (if (and (not (eq :lib (redmod-type mod))) (eq run t)) (redb_run mod))
             (funcall success) 
         ) 
         :fail (lambda () (format t "Compilation failed for ~a" (redmod-name mod)))
