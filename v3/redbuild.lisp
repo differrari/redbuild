@@ -139,12 +139,30 @@
 
 (defun run_prog (cmd) (nth-value 2 (uiop:run-program cmd :ignore-error-status t :output t)))
 
+(defun replace-extension (path newext) 
+    (namestring (make-pathname :type newext :defaults (pathname path))))
+
+(defun lib-command (includes src) (uiop:run-program (list "gcc" includes "-c" src "-o" (replace-extension src "o")) :output t))
+
+(defun lib-assemble (srcs output) (uiop:run-program (list "ar" "rcs" output (flatten-args srcs))))
+
+(defun lib-compile (mod) 
+    (let ((libs (flatten-args (remove nil (mapcar #'lib-to-include (redmod-libraries mod))))))
+        (mapcar (lambda (a) (lib-command libs a)) (redmod-sources mod))
+        (lib-assemble (redmod-sources mod) (concatenate `string (redmod-name mod) (output_type_name mod)))
+    )
+)
+
 (defun redb_compile (mod &key success fail) "Compile a redbuild module"
     (print "Beginning compilation")
-    (if (= (run_prog (flatten-args (make-command mod))) 0) 
-        (funcall success) 
-        (funcall fail)
+    (case (redmod-type mod)
+        (:lib (lib-compile mod))
+        (otherwise (if (= (run_prog (flatten-args (make-command mod))) 0) 
+            (funcall success) 
+            (funcall fail)
+            )
         )
+    )
 )
 
 (defun redb_run (mod)

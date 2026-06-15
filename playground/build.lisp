@@ -5,4 +5,4 @@
         :type :bin
         :target :linux
         :srcs (list "test.c")
-) :add-dependencies t :success (lambda () (print "Done")))
+) :add-dependencies t :run t :success (lambda () (print "Done")))
