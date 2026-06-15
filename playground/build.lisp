@@ -3,6 +3,6 @@
 (quick_redb (make-instance `redmod
         :name "play"
         :type :lib
-        :target :linux
+        :target (native)
         :srcs (list "test.c" "a.c")
 ) :add-dependencies t :run t :success (lambda () (print "Done") (print (emit_compile_commands))))

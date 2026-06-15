@@ -15,6 +15,14 @@
 (defun resolve_path (path) (concatenate `string *project_root_folder* path))
 
 (deftype environments () '(member :redacted :linux :mac :windows))
+(defun native ()
+    (if (uiop:os-windows-p) :windows 
+        (if (uiop:os-unix-p) :linux
+            (if (uiop:os-macosx-p) :mac
+                :redacted)
+        )
+    )
+)
 
 (defparameter *current_env* :linux)
 
