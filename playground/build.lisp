@@ -4,5 +4,5 @@
         :name "play"
         :type :lib
         :target :linux
-        :srcs (list "test.c")
-) :add-dependencies t :run t :success (lambda () (print "Done")))
+        :srcs (list "test.c" "a.c")
+) :add-dependencies t :run t :success (lambda () (print "Done") (emit_compile_commands)))
