@@ -3,5 +3,5 @@
 
 int main(){
     print("Hello world");
-    memcpy(0,0,0);
+    // memcpy(0,0,0);
 }
