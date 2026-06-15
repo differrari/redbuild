@@ -122,6 +122,31 @@
     )
 )
 
+(defclass comp_cmd () 
+    (
+        (filen
+            :initarg :file-name
+            :type string
+            :initform ""
+            :accessor cc-file-name)
+        (dir
+            :initarg :dir
+            :type string
+            :initform ""
+            :accessor cc-dir)
+        (out
+            :initarg :out
+            :type string
+            :initform ""
+            :accessor cc-out)
+        (cmds
+            :initarg :cmds
+            :type list
+            :initform ()
+            :accessor cc-cmds)
+    )
+)
+
 (defgeneric flatten-args (lst));TODO: probably better off to use (flatten lst) instead in most places, and can make it generic too
 
 (defmethod flatten-args ((lst list)) (format nil "~{~A~^ ~}" lst))
@@ -164,11 +189,21 @@
     )
 )
 
-(defun lib-compile-list (mod) 
+(defun lib-compile-cc (mod) 
     (let ((libs (flatten-args (remove nil (mapcar #'lib-to-include (redmod-libraries mod))))))
         (append
-            (mapcar (lambda (a) (flatten (lib-command-list libs a))) (redmod-sources mod))
-            (list (lib-assemble-list (redmod-sources mod) (concatenate `string (redmod-name mod) (output_type_name mod))))
+            (mapcar (lambda (a) 
+                (make-instance `comp_cmd 
+                    :file-name a
+                    :out (replace-extension a "o")
+                    :cmds (flatten (lib-command-list libs a))
+                )
+            ) (redmod-sources mod))
+            (list (make-instance `comp_cmd 
+                :file-name (first (redmod-sources mod))
+                :out (concatenate `string (redmod-name mod) (output_type_name mod))
+                :cmds (lib-assemble-list (redmod-sources mod) (concatenate `string (redmod-name mod) (output_type_name mod)))
+            ))
         )
     )
 )
@@ -202,12 +237,30 @@
 
 (defun redb_compile_commands (mod &key) "Generate a redbuild module's compile_commands.json file"
     (setf *compcmds* (append *compcmds* (case (redmod-type mod)
-        (:lib (lib-compile-list mod))
-        (otherwise (list (make-command mod)))
+        (:lib (lib-compile-cc mod))
+        (otherwise (list (make-instance `comp_cmd 
+            :cmds (make-command mod) 
+            :file-name (first (redmod-sources mod))
+            :out (concatenate `string (redmod-name mod) (output_type_name mod))
+        )))
     )))
 )
 
-(defun emit_compile_commands () (print "Emitting compile commands") (printlist *compcmds*))
+(defun formatcc (cclist)
+    (format nil "  \"arguments\":[~&~{      \"~a\"~^,~&~}~&  ],~&  \"output\":\"~a\",~&  \"file\":\"~a\",~&  \"directory\":\"~a\"~&" (cc-cmds cclist) (cc-out cclist) (cc-file-name cclist) (uiop:getcwd))
+)
+
+(defun formatmod (str into)
+    (format into "{")
+)
+
+(defun emit_compile_commands () (print "Emitting compile commands") 
+    (with-open-file (stream #p"compile_commands.json" :direction :output :if-exists :supersede)
+        (format stream "[")
+        (format stream "~{{~&~a}~^,~&~}" (mapcar #'formatcc *compcmds*))
+        (format stream "]")
+    )
+)
 
 (defun redb_fallback (mod &key) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
     (with-open-file (stream #p"simplemake" :direction :output :if-exists :supersede)
