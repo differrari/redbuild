@@ -1,3 +1,6 @@
+(load "~/quicklisp/setup.lisp")
+(ql:quickload :uiop)
+
 ;;;;;
 (defmacro println (&rest args) 
     `(progn 
@@ -99,20 +102,21 @@
     (concatenate `string (redmod-name mod) (output_type_name mod))
 )))
 
+(defun run_prog (cmd) (nth-value 2 (uiop:run-program cmd :ignore-error-status t)))
+
 (defun redb_compile (mod &key success fail) "Compile a redbuild module"
     (print "Beginning compilation")
-    (printlist (make-command mod))
-    (if (= 1 1) 
+    (if (= (run_prog (make-command mod)) 0) 
         (funcall success) 
         (funcall fail))
     (print "Compilation is finished")
 )
 
-(defun redb_compile_commands (mod &key success fail) "Compile a redbuild module"
+(defun redb_compile_commands (mod &key success fail) "Generate a redbuild module's compile_commands.json file"
     (printlist (make-command mod))
 )
 
-(defun redb_fallback (mod &key success fail) "Compile a redbuild module"
+(defun redb_fallback (mod &key success fail) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
     (with-open-file (stream #p"simplemake" :direction :output :if-exists :supersede)
         (format stream "~&~{~a~&~}~&" (redmod-sources mod))
     )

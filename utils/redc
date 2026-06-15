@@ -4,10 +4,12 @@ if [ "$1" != "c" ]; then
     cred build.redb -o build.c
 fi
 
+PROJECTS=$HOME
+
 FW=""
 
 if [ "$(uname)" = "Darwin" ]; then
     FW="-framework Cocoa -framework IOKit -framework CoreVideo -framework CoreFoundation"
 fi
 
-gcc build.c -I. -I$REDBUILD -I../redlib ../redlib/clibshared.a ../raylib/src/libraylib.a -lm -lc $FW -o build
+gcc build.c -I. -I$REDBUILD -I$PROJECTS/redlib $PROJECTS/redlib/clibshared.a -lglfw -lm -lc $FW -o build

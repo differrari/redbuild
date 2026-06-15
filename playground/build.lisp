@@ -5,11 +5,13 @@
         :name "play"
         :type :bin
         :libs (list 
-            (local_lib "redlib" :lib "libshared.a")
-            (local_lib "raylib" :subpath "src")
+            (local_lib "redlib" :path "/home/di" :lib "clibshared.a")
             )
         :srcs (list "test.c")
         :flags (list "-Dtest")
     ))) 
-    (redb_compile playground_mod :success (lambda () (redb_fallback playground_mod)) :fail (lambda () (print "Failed")))
+    (redb_compile playground_mod 
+        :success (lambda () (redb_fallback playground_mod)) 
+        :fail (lambda () (print "Failed"))
+    )
 )
