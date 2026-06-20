@@ -177,7 +177,7 @@
     (concatenate `string (redmod-name mod) (output_type_name mod))
 ))))
 
-(defun run_prog (cmd) (nth-value 2 (uiop:run-program cmd :ignore-error-status t :output t)))
+(defun run_prog (cmd) (nth-value 2 (uiop:run-program cmd :ignore-error-status t :error-output t)))
 
 (defun replace-extension (path newext) 
     (namestring (make-pathname :type newext :defaults (pathname path))))
@@ -188,7 +188,7 @@
 
 (defun lib-assemble-list (srcs output) (flatten (list "ar" "rcs" output srcs)))
 
-(defun lib-assemble (srcs output) (nth-value 2 (uiop:run-program (lib-assemble-list srcs output))))
+(defun lib-assemble (srcs output) (nth-value 2 (uiop:run-program (lib-assemble-list srcs output) :error-output t)));;TODO: This gets rid of output
 
 (defun lib-compile (mod) 
     (let ((libs (flatten-args (remove nil (mapcar #'lib-to-include (redmod-libraries mod))))))
@@ -235,9 +235,9 @@
 (defun redb_run (mod)
     (let ((namee (redmod-name mod)))
         (uiop:run-program (list "chmod" "+x" (concatenate `string namee (output_type_name mod))))
-        (format t "=====~a=====~&" namee)
-        (uiop:run-program (concatenate `string "./" namee (output_type_name mod)) :output t)
-        (format t "=====~a=====~&" (make-string (length namee) :initial-element #\=))
+        (format t "~&=====~a=====~&" namee)
+        (uiop:run-program (concatenate `string "./" namee (output_type_name mod)) :ignore-error-status t :output t)
+        (format t "~&=====~a=====~&" (make-string (length namee) :initial-element #\=))
     )
 )
 
