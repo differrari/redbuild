@@ -288,3 +288,9 @@
         :fail (lambda () (format t "Compilation failed for ~a" (redmod-name mod)))
     )
 )
+
+(defparameter *tester-file* nil)
+(defmacro dynlib () (if *tester-file* :bin :lib))
+(defmacro dynsrc (&rest libfiles) `(remove nil (append (list ,@libfiles) (list *tester-file*))))
+
+(defun redb-set-tester (name) "Call this function with a filename containing a main function to turn a library into a binary and test it using that tester file. Use dynlib and dynsrc macros to make the changes" (setf *tester-file* name))
