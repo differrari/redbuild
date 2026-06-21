@@ -1,15 +1,6 @@
 (load "~/quicklisp/setup.lisp")
 (ql:quickload :uiop)
 
-;;;;;
-(defmacro println (&rest args) 
-    `(progn 
-        (format t "~&~{~a~^ ~}~&" (list ,@args))))
-(defun printlist (lst) (format t "~&~{~a~&~}~&" lst))
-;;;;;
-
-
-;;;;;
 (defparameter *project_root_folder* (user-homedir-pathname))
 
 (defun resolve_path (path) (concatenate `string *project_root_folder* path))
@@ -155,19 +146,15 @@
     )
 )
 
-(defgeneric flatten-args (lst));TODO: probably better off to use (flatten lst) instead in most places, and can make it generic too
-
-(defmethod flatten-args ((lst list)) (format nil "~{~A~^ ~}" lst))
-(defmethod flatten-args ((lst string)) (format nil "~a" lst))
-
 (defun flatten (lst)
-    (cond ((null lst) nil)
+    (cond
+        ((null lst) nil)
         ((atom lst) (list lst))
         (t (append (flatten (car lst)) (flatten (cdr lst))))
     )
 )
 
-(defun make-command (mod) (mapcar #'flatten-args (remove nil (list 
+(defun make-command (mod) (flatten (remove nil (list 
     (resolve_compiler *current_env* *compiler*)
     (redmod-flags mod)
     (remove nil (mapcar #'lib-to-include (redmod-libraries mod)))
@@ -182,23 +169,23 @@
 (defun replace-extension (path newext) 
     (namestring (make-pathname :type newext :defaults (pathname path))))
 
-(defun lib-command-list (includes src) (list "gcc" includes "-c" src "-o" (replace-extension src "o")))
+(defun lib-command-list (includes src) (flatten (list "gcc" includes "-c" src "-o" (replace-extension src "o"))))
 
-(defun lib-command (includes src) (uiop:run-program (lib-command-list includes src)) :output t)
+(defun lib-command (includes src) (uiop:run-program (lib-command-list includes src) :ignore-error-status t :error-output t))
 
-(defun lib-assemble-list (srcs output) (flatten (list "ar" "rcs" output srcs)))
+(defun lib-assemble-list (srcs output) (flatten (list "ar" "rcs" output (mapcar (lambda (a) (replace-extension a "o")) srcs))))
 
-(defun lib-assemble (srcs output) (nth-value 2 (uiop:run-program (lib-assemble-list srcs output) :error-output t)));;TODO: This gets rid of output
+(defun lib-assemble (srcs output) (nth-value 2 (uiop:run-program (lib-assemble-list srcs output) :ignore-error-status t :error-output t)))
 
 (defun lib-compile (mod) 
-    (let ((libs (flatten-args (remove nil (mapcar #'lib-to-include (redmod-libraries mod))))))
+    (let ((libs (flatten (remove nil (mapcar #'lib-to-include (redmod-libraries mod))))))
         (mapcar (lambda (a) (lib-command libs a)) (redmod-sources mod))
         (lib-assemble (redmod-sources mod) (concatenate `string (redmod-name mod) (output_type_name mod)))
     )
 )
 
 (defun lib-compile-cc (mod) 
-    (let ((libs (flatten-args (remove nil (mapcar #'lib-to-include (redmod-libraries mod))))))
+    (let ((libs (flatten (remove nil (mapcar #'lib-to-include (redmod-libraries mod))))))
         (append
             (mapcar (lambda (a) 
                 (make-instance `comp_cmd 
@@ -224,7 +211,7 @@
             (funcall fail)
             )
         )
-        (otherwise (if (= (run_prog (flatten-args (make-command mod))) 0) 
+        (otherwise (if (= (run_prog (flatten (make-command mod))) 0) 
             (funcall success) 
             (funcall fail)
             )
@@ -232,7 +219,7 @@
     )
 )
 
-(defun redb_run (mod)
+(defun redb_run (mod) "Run the executable of a redbuild module"
     (let ((namee (redmod-name mod)))
         (uiop:run-program (list "chmod" "+x" (concatenate `string namee (output_type_name mod))))
         (format t "~&=====~a=====~&" namee)
@@ -243,7 +230,7 @@
 
 (defparameter *compcmds* '())
 
-(defun redb_compile_commands (mod &key) "Generate a redbuild module's compile_commands.json file"
+(defun redb_compile_commands (mod &key) "Generate a redbuild module's compile_commands.json file. Will need to call emit-compile-commands to produce the final file"
     (setf *compcmds* (append *compcmds* (case (redmod-type mod)
         (:lib (lib-compile-cc mod))
         (otherwise (list (make-instance `comp_cmd 
@@ -258,11 +245,7 @@
     (format nil "  \"arguments\":[~&~{      \"~a\"~^,~&~}~&  ],~&  \"output\":\"~a\",~&  \"file\":\"~a\",~&  \"directory\":\"~a\"~&" (cc-cmds cclist) (cc-out cclist) (cc-file-name cclist) (uiop:getcwd))
 )
 
-(defun formatmod (str into)
-    (format into "{")
-)
-
-(defun emit_compile_commands () (print "Emitting compile commands") 
+(defun emit-compile-commands () "Emit a compile_commands.json file" 
     (with-open-file (stream #p"compile_commands.json" :direction :output :if-exists :supersede)
         (format stream "[")
         (format stream "~{{~&~a}~^,~&~}" (mapcar #'formatcc *compcmds*))
@@ -276,7 +259,7 @@
     )
 )
 
-(defun quick_redb (mod &key add-dependencies run success fail) 
+(defun quick_redb (mod &key add-dependencies run success fail) "Quick redbuild project compilation"
     (if (eq add-dependencies t) (setf (redmod-libraries mod) (default_dependencies (redmod-type mod) (redmod-target mod))))
     (redb_compile mod 
         :success (lambda () 
@@ -289,6 +272,7 @@
     )
 )
 
+;;; Auto test ;;;
 (defparameter *tester-file* nil)
 (defmacro dynlib () (if *tester-file* :bin :lib))
 (defmacro dynsrc (&rest libfiles) `(remove nil (append (list ,@libfiles) (list *tester-file*))))

@@ -5,4 +5,4 @@
         :type :lib
         :target (native)
         :srcs (list "test.c" "a.c")
-) :add-dependencies t :run t :success (lambda () (print "Done") (print (emit_compile_commands))))
+) :add-dependencies t :run t :success (lambda () (print "Done") (print (emit-compile-commands))))
