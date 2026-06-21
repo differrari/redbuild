@@ -1,8 +1,8 @@
 (load "../v3/redbuild.lisp")
 
-(quick-redb (make-instance `redmod
+(redbuild:quick-build (redbuild:make-instance `redbuild:redmod
         :name "play"
         :type :lib
-        :target (native)
+        :target (redbuild:native)
         :srcs (list "test.c" "a.c")
-) :add-dependencies t :run t :success (lambda () (print "Done") (print (emit-compile-commands))))
+) :add-dependencies t :run t :success (lambda () (print "Done") (print (redbuild:emit-compile-commands))))

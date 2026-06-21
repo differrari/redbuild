@@ -1,6 +1,31 @@
 (load "~/quicklisp/setup.lisp")
 (ql:quickload :uiop)
 
+(defpackage :redbuild
+  (:use :common-lisp :uiop/package)
+  (:export
+      #:dynlib
+      #:dynsrc
+      #:set-tester
+      #:quick-build
+      #:fallback 
+      #:emit-compile-commands 
+      #:compile-commands 
+      #:run 
+      #:compile-module
+      #:make-instance
+      #:redmod 
+      #:local-lib 
+      #:system-lib 
+      #:system-fw 
+      #:environments 
+      #:native 
+      #:resolve-compiler
+    )
+)
+
+(in-package :redbuild)
+
 (defparameter *root-folder* (user-homedir-pathname))
 
 (deftype environments () '(member :redacted :linux :mac :windows))
@@ -195,7 +220,7 @@
     )
 )
 
-(defun redb-compile (mod &key success fail) "Compile a redbuild module"
+(defun compile-module (mod &key success fail) "Compile a redbuild module"
     (print "Beginning compilation")
     (case (redmod-type mod)
         (:lib (if (= (lib-compile mod) 0) 
@@ -211,7 +236,7 @@
     )
 )
 
-(defun redb-run (mod) "Run the executable of a redbuild module"
+(defun run (mod) "Run the executable of a redbuild module"
     (let ((namee (redmod-name mod)))
         (uiop:run-program (list "chmod" "+x" (concatenate `string namee (output-type-name mod))))
         (format t "~&=====~a=====~&" namee)
@@ -222,7 +247,7 @@
 
 (defparameter *compcmds* '())
 
-(defun redb-compile-commands (mod &key) "Generate a redbuild module's compile_commands.json file. Will need to call emit-compile-commands to produce the final file"
+(defun compile-commands (mod &key) "Generate a redbuild module's compile_commands.json file. Will need to call emit-compile-commands to produce the final file"
     (setf *compcmds* (append *compcmds* (case (redmod-type mod)
         (:lib (lib-compile-cc mod))
         (otherwise (list (make-instance `comp-cmd 
@@ -245,19 +270,19 @@
     )
 )
 
-(defun redb-fallback (mod &key) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
+(defun fallback (mod &key) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
     (with-open-file (stream #p"simplemake" :direction :output :if-exists :supersede)
         (format stream "~&~{~a~&~}~&" (redmod-sources mod))
     )
 )
 
-(defun quick-redb (mod &key add-dependencies run success fail) "Quick redbuild project compilation"
+(defun quick-build (mod &key add-dependencies run success fail) "Quick redbuild project compilation"
     (if (eq add-dependencies t) (setf (redmod-libraries mod) (default-dependencies (redmod-type mod) (redmod-target mod))))
-    (redb-compile mod 
+    (compile-module mod 
         :success (lambda () 
-            (redb-fallback mod)
-            (redb-compile-commands mod)
-            (if (and (not (eq :lib (redmod-type mod))) (eq run t)) (redb-run mod))
+            (fallback mod)
+            (compile-commands mod)
+            (if (and (not (eq :lib (redmod-type mod))) (eq run t)) (run mod))
             (funcall success) 
         ) 
         :fail (lambda () (format t "Compilation failed for ~a" (redmod-name mod)))
@@ -269,4 +294,4 @@
 (defmacro dynlib () (if *tester-file* :bin :lib))
 (defmacro dynsrc (&rest libfiles) `(remove nil (append (list ,@libfiles) (list *tester-file*))))
 
-(defun redb-set-tester (name) "Call this function with a filename containing a main function to turn a library into a binary and test it using that tester file. Use dynlib and dynsrc macros to make the changes" (setf *tester-file* name))
+(defun set-tester (name) "Call this function with a filename containing a main function to turn a library into a binary and test it using that tester file. Use dynlib and dynsrc macros to make the changes" (setf *tester-file* name))
