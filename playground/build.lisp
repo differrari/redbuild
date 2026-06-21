@@ -1,6 +1,6 @@
 (load "../v3/redbuild.lisp")
 
-(quick_redb (make-instance `redmod
+(quick-redb (make-instance `redmod
         :name "play"
         :type :lib
         :target (native)

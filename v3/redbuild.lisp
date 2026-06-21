@@ -1,9 +1,7 @@
 (load "~/quicklisp/setup.lisp")
 (ql:quickload :uiop)
 
-(defparameter *project_root_folder* (user-homedir-pathname))
-
-(defun resolve_path (path) (concatenate `string *project_root_folder* path))
+(defparameter *root-folder* (user-homedir-pathname))
 
 (deftype environments () '(member :redacted :linux :mac :windows))
 (defun native ()
@@ -15,64 +13,58 @@
     )
 )
 
-(defparameter *current_env* :linux)
+(defparameter *current-env* :linux)
 
-(defun resolve_compiler (environment comp_name) 
+(defun resolve-compiler (environment compiler-name) 
     (case environment 
-        (:redacted (concatenate `string "aarch64-none-elf-" comp_name))
-        (:linux (concatenate `string "" comp_name))
-        (:mac (concatenate `string "" comp_name))
-        (:windows (concatenate `string "" comp_name))
-        (otherwise (error "Unknown environment type ~S" environment))
+        (:redacted (concatenate `string "aarch64-none-elf-" compiler-name))
+        (:linux (concatenate `string "" compiler-name))
+        (:mac (concatenate `string "" compiler-name))
+        (:windows (concatenate `string "" compiler-name))
+        (otherwise (error "Unknown environment type ~S" compiler-name))
     )
 )
 ;;;;;;
 
-(defclass lib_class () 
+(defclass lib-class () 
     (
-        (header_include 
-            :initarg :header_include
+        (header 
+            :initarg :header
             :type string
             :accessor lib-include)
-        (source_include 
-            :initarg :source_include
+        (source 
+            :initarg :source
             :type string
             :accessor lib-source)
     )
 )
 (defun lib-to-include (lib) (let ((inc (lib-include lib))) (if (eq (length inc) 0) nil (concatenate `string "-I" inc))))
 
-(defun local_lib (name &key (path *project_root_folder*) (lib (format nil "lib~a.a" name)) (subpath "")) 
-    (make-instance `lib_class
-        :header_include (format nil "~a~a" path name)
-        :source_include (format nil "~a~a~a/~a" path name subpath lib)
+(defun local-lib (name &key (path *root-folder*) (lib (format nil "lib~a.a" name)) (subpath "")) 
+    (make-instance `lib-class
+        :header (format nil "~a~a" path name)
+        :source (format nil "~a~a~a/~a" path name subpath lib)
     )
 )
 
-(defun system_lib (name) 
-    (make-instance `lib_class
-        :header_include ""
-        :source_include (format nil "-l~a" name)
+(defun system-lib (name) 
+    (make-instance `lib-class
+        :header ""
+        :source (format nil "-l~a" name)
     )
 )
 
-(defun system_fw (name) 
-    (make-instance `lib_class
-        :header_include ""
-        :source_include (format nil "-framework ~a" name)
+(defun system-fw (name) 
+    (make-instance `lib-class
+        :header ""
+        :source (format nil "-framework ~a" name)
     )
-)
-
-(defun add_source (name) (format nil "source: ~a" name))
-
-(defun compile_prog () 
-    (print "Going to compile here")
 )
 
 (defparameter *compiler* "gcc")
 
-(deftype output_type () `(member :lib :bin :red))
-(defun output_type_name (type) 
+(deftype output-type () `(member :lib :bin :red))
+(defun output-type-name (type) 
     (case (redmod-type type)
         (:lib ".a")
         (:bin ".elf")
@@ -81,11 +73,11 @@
     )
 )
 
-(defmacro redlib (targ) (local_lib "redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a"))))
-(defmacro glfw (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system_lib "glfw"))))))
-(defmacro libc (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system_lib "c"))))))
-(defmacro libm (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system_lib "m"))))))
-(defun default_dependencies (type targ) (list (redlib targ) (libc type targ) (libm type targ)))
+(defmacro redlib (targ) (local-lib "redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a"))))
+(defmacro glfw (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "glfw"))))))
+(defmacro libc (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "c"))))))
+(defmacro libm (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "m"))))))
+(defun default-dependencies (type targ) (list (redlib targ) (libc type targ) (libm type targ)))
 
 (defclass redmod () 
     (
@@ -95,7 +87,7 @@
             :accessor redmod-name)
         (type
             :initarg :type
-            :type output_type
+            :type output-type
             :accessor redmod-type)
         (target
             :initarg :target
@@ -121,7 +113,7 @@
     )
 )
 
-(defclass comp_cmd () 
+(defclass comp-cmd () 
     (
         (filen
             :initarg :file-name
@@ -155,16 +147,16 @@
 )
 
 (defun make-command (mod) (flatten (remove nil (list 
-    (resolve_compiler *current_env* *compiler*)
+    (resolve-compiler *current-env* *compiler*)
     (redmod-flags mod)
     (remove nil (mapcar #'lib-to-include (redmod-libraries mod)))
     (redmod-sources mod) 
     (mapcar #'lib-source (redmod-libraries mod))
     "-o" 
-    (concatenate `string (redmod-name mod) (output_type_name mod))
+    (concatenate `string (redmod-name mod) (output-type-name mod))
 ))))
 
-(defun run_prog (cmd) (nth-value 2 (uiop:run-program cmd :ignore-error-status t :error-output t)))
+(defun run-prog (cmd) (nth-value 2 (uiop:run-program cmd :ignore-error-status t :error-output t)))
 
 (defun replace-extension (path newext) 
     (namestring (make-pathname :type newext :defaults (pathname path))))
@@ -180,7 +172,7 @@
 (defun lib-compile (mod) 
     (let ((libs (flatten (remove nil (mapcar #'lib-to-include (redmod-libraries mod))))))
         (mapcar (lambda (a) (lib-command libs a)) (redmod-sources mod))
-        (lib-assemble (redmod-sources mod) (concatenate `string (redmod-name mod) (output_type_name mod)))
+        (lib-assemble (redmod-sources mod) (concatenate `string (redmod-name mod) (output-type-name mod)))
     )
 )
 
@@ -188,22 +180,22 @@
     (let ((libs (flatten (remove nil (mapcar #'lib-to-include (redmod-libraries mod))))))
         (append
             (mapcar (lambda (a) 
-                (make-instance `comp_cmd 
+                (make-instance `comp-cmd 
                     :file-name a
                     :out (replace-extension a "o")
                     :cmds (flatten (lib-command-list libs a))
                 )
             ) (redmod-sources mod))
-            (list (make-instance `comp_cmd 
+            (list (make-instance `comp-cmd 
                 :file-name (first (redmod-sources mod))
-                :out (concatenate `string (redmod-name mod) (output_type_name mod))
-                :cmds (lib-assemble-list (redmod-sources mod) (concatenate `string (redmod-name mod) (output_type_name mod)))
+                :out (concatenate `string (redmod-name mod) (output-type-name mod))
+                :cmds (lib-assemble-list (redmod-sources mod) (concatenate `string (redmod-name mod) (output-type-name mod)))
             ))
         )
     )
 )
 
-(defun redb_compile (mod &key success fail) "Compile a redbuild module"
+(defun redb-compile (mod &key success fail) "Compile a redbuild module"
     (print "Beginning compilation")
     (case (redmod-type mod)
         (:lib (if (= (lib-compile mod) 0) 
@@ -211,7 +203,7 @@
             (funcall fail)
             )
         )
-        (otherwise (if (= (run_prog (flatten (make-command mod))) 0) 
+        (otherwise (if (= (run-prog (flatten (make-command mod))) 0) 
             (funcall success) 
             (funcall fail)
             )
@@ -219,24 +211,24 @@
     )
 )
 
-(defun redb_run (mod) "Run the executable of a redbuild module"
+(defun redb-run (mod) "Run the executable of a redbuild module"
     (let ((namee (redmod-name mod)))
-        (uiop:run-program (list "chmod" "+x" (concatenate `string namee (output_type_name mod))))
+        (uiop:run-program (list "chmod" "+x" (concatenate `string namee (output-type-name mod))))
         (format t "~&=====~a=====~&" namee)
-        (uiop:run-program (concatenate `string "./" namee (output_type_name mod)) :ignore-error-status t :output t)
+        (uiop:run-program (concatenate `string "./" namee (output-type-name mod)) :ignore-error-status t :output t)
         (format t "~&=====~a=====~&" (make-string (length namee) :initial-element #\=))
     )
 )
 
 (defparameter *compcmds* '())
 
-(defun redb_compile_commands (mod &key) "Generate a redbuild module's compile_commands.json file. Will need to call emit-compile-commands to produce the final file"
+(defun redb-compile-commands (mod &key) "Generate a redbuild module's compile_commands.json file. Will need to call emit-compile-commands to produce the final file"
     (setf *compcmds* (append *compcmds* (case (redmod-type mod)
         (:lib (lib-compile-cc mod))
-        (otherwise (list (make-instance `comp_cmd 
+        (otherwise (list (make-instance `comp-cmd 
             :cmds (make-command mod) 
             :file-name (first (redmod-sources mod))
-            :out (concatenate `string (redmod-name mod) (output_type_name mod))
+            :out (concatenate `string (redmod-name mod) (output-type-name mod))
         )))
     )))
 )
@@ -253,19 +245,19 @@
     )
 )
 
-(defun redb_fallback (mod &key) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
+(defun redb-fallback (mod &key) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
     (with-open-file (stream #p"simplemake" :direction :output :if-exists :supersede)
         (format stream "~&~{~a~&~}~&" (redmod-sources mod))
     )
 )
 
-(defun quick_redb (mod &key add-dependencies run success fail) "Quick redbuild project compilation"
-    (if (eq add-dependencies t) (setf (redmod-libraries mod) (default_dependencies (redmod-type mod) (redmod-target mod))))
-    (redb_compile mod 
+(defun quick-redb (mod &key add-dependencies run success fail) "Quick redbuild project compilation"
+    (if (eq add-dependencies t) (setf (redmod-libraries mod) (default-dependencies (redmod-type mod) (redmod-target mod))))
+    (redb-compile mod 
         :success (lambda () 
-            (redb_fallback mod)
-            (redb_compile_commands mod)
-            (if (and (not (eq :lib (redmod-type mod))) (eq run t)) (redb_run mod))
+            (redb-fallback mod)
+            (redb-compile-commands mod)
+            (if (and (not (eq :lib (redmod-type mod))) (eq run t)) (redb-run mod))
             (funcall success) 
         ) 
         :fail (lambda () (format t "Compilation failed for ~a" (redmod-name mod)))
