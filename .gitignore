@@ -18,3 +18,5 @@ compile_commands.json
 *.red
 *.r
 trace
+packaging/input/
+packaging/staging/

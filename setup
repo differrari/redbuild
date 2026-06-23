@@ -6,7 +6,14 @@ else
     CONFIG_FILE="$HOME/.bashrc"
 fi
 
-echo "export REDBUILD=$(pwd)" >> "$CONFIG_FILE"
-echo "export PATH=\$PATH:$(pwd)/utils" >> "$CONFIG_FILE"
+if [ -z "${REDBUILD}" ]; then
+    echo "export REDBUILD=$(pwd)" >> "$CONFIG_FILE"
+    echo "export PATH=\$PATH:$(pwd)/utils" >> "$CONFIG_FILE"
+else 
+    echo "Environment variables already set. add export REDBUILD=path/to/redbuild and export PATH=\$PATH:/path/to/redbuild/utils to your rc file if you're having issues"
+fi
+
+mkdir -p ./packaging/input
+mkdir -p ./packaging/staging
 
 source $CONFIG_FILE
