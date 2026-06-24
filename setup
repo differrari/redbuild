@@ -6,6 +6,8 @@ else
     CONFIG_FILE="$HOME/.bashrc"
 fi
 
+echo "This tool depends on linuxdeploy to package Linux AppImages. Make sure it's installed and available as linuxdeploy. AppImage in your PATH"
+
 if [ -z "${REDBUILD}" ]; then
     echo "export REDBUILD=$(pwd)" >> "$CONFIG_FILE"
     echo "export PATH=\$PATH:$(pwd)/utils" >> "$CONFIG_FILE"

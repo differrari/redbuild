@@ -21,11 +21,12 @@
     (multiline 
         "# SPDX-License-Identifier: GPL-2.0-or-later"
         "[Desktop Entry]"
-        (prop "Version=~a" (pack-version pkg))
-        (prop "Exec=~a" (pack-name pkg))
+        (prop "Name=~a" (pack-name pkg))
+        "Version=1.0"
+        "Exec=AppRun"
         "Type=Application"
-        (prop "Categories=~a" (pack-categories pkg))
-        (prop "Icon=~a.png" (pack-name pkg))
+        "Categories=Graphics"
+        (prop "Icon=icon" (pack-name pkg))
     )
 )
 
@@ -34,8 +35,10 @@
         "#!/bin/sh"
         ""
         "export HERE=\"$(dirname \"$(readlink -f \"${0}\")\")\""
+        "echo $(pwd) $HERE"
         "export PATH=\"$HERE:$PATH\""
-        (prop "\"$HERE/~a\"" (pack-name pkg))
+        "cd $HERE"
+        (prop "\"./~a\"" (pack-name pkg))
     )
 )
 

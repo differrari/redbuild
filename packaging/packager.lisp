@@ -24,6 +24,11 @@
     (with-open-file (stream (merge-pathnames (uiop:getcwd) (make-pathname :name name)) :direction :output :if-exists :supersede)
         (format stream source)
     )
+    name
+)
+
+(defun make-executable (name) 
+    (uiop:run-program (list "chmod" "+x" name))
 )
 
 (defmacro make-dir (name &body body)
@@ -67,6 +72,17 @@
     )
 )
 
+(defun linuxpkg (pkg) 
+    (make-dir "AppDir"
+        (make-executable (make-file "AppRun" (appimage-apprun pkg)))
+        (copy-file (concatenate `string (pack-name pkg) ".elf") :destination-name (pack-name pkg))
+        (copy-dir "resources")
+        (copy-file "icon.png")
+        (make-file (concatenate `string (pack-name pkg) ".desktop") (appimage-desktop-file pkg))
+    )
+    (uiop:run-program (list "linuxdeploy.AppImage" "--appdir" "AppDir" "--output" "appimage") :output t :error-output t)
+)
+
 (defun clean-staging () (uiop:delete-directory-tree (make-pathname :directory *staging-area*) :validate t :if-does-not-exist :ignore))
 
 (defun generate-build (pkg environment &key (clean t)) 
@@ -74,7 +90,7 @@
     (make-dir "staging"
         (case environment 
             (:redacted (redpkg pkg))
-            (:linux (error "Packaging for ~S not implemented yet" environment))
+            (:linux (linuxpkg pkg))
             (:mac (macpkg pkg))
             (:windows (error "Packaging for ~S not implemented yet" environment))
             (otherwise (error "Unknown environment type ~S" environment))
