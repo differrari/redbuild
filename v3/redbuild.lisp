@@ -247,7 +247,7 @@
 
 (defparameter *compcmds* '())
 
-(defun compile-commands (mod &key) "Generate a redbuild module's compile_commands.json file. Will need to call emit-compile-commands to produce the final file"
+(defun compile-commands (mod) "Generate a redbuild module's compile_commands.json file. Will need to call emit-compile-commands to produce the final file"
     (setf *compcmds* (append *compcmds* (case (redmod-type mod)
         (:lib (lib-compile-cc mod))
         (otherwise (list (make-instance `comp-cmd 
@@ -270,7 +270,7 @@
     )
 )
 
-(defun fallback (mod &key) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
+(defun fallback (mod) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
     (with-open-file (stream #p"simplemake" :direction :output :if-exists :supersede)
         (format stream "~&~{~a~&~}~&" (redmod-sources mod))
     )

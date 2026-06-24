@@ -1,9 +1,10 @@
 (load "../v3/redbuild.lisp")
 (load "~/redlisp/utils.lisp")
+(load "common.lisp")
+(load "templates.lisp")
 
 (defparameter *root* (namestring (uiop:getcwd)))
 (defparameter *staging-area* (concatenate `string *root* "staging"))
-(defparameter *template-area* (concatenate `string *root* "templates"))
 (defparameter *input-area* (concatenate `string *root* "input"))
 
 (defun get-folder-for-type (type) (case type 
@@ -14,7 +15,6 @@
     (otherwise (error "Unknown environment type ~S" type))
 ))
 
-(defun get-template-dir (type) (concatenate `string *template-area* "/" (get-folder-for-type type)))
 (defun get-input (name) (concatenate `string *input-area* "/" name))
 
 (defun absolute-pathname (name) (merge-pathnames (uiop:getcwd) (make-pathname :name name)))
@@ -37,51 +37,47 @@
     )
 )
 
-(defun copy-dir (name)
-    (uiop:run-program (list "cp" "-r" (get-input name) (namestring (uiop:getcwd))))
+(defun copy-dir (name &key (can-fail nil))
+    (uiop:run-program (list "cp" "-r" (get-input name) (namestring (uiop:getcwd))) :ignore-error-status can-fail)
 )
 
-(defun copy-file (name)
-    (uiop:run-program (list "cp" (get-input name) (namestring (uiop:getcwd))))
+(defun copy-file (name &key (can-fail nil) (destination-name name))
+    (uiop:run-program (list "cp" (get-input name) (concatenate `string (namestring (uiop:getcwd)) "/" destination-name)) :ignore-error-status can-fail)
 )
 
-(defun load-template (type name)
-     (uiop:read-file-string (concatenate `string (get-template-dir type) "/" name))
-)
-
-(defun redpkg (name)
-    (make-dir (concatenate `string name ".red") 
-        (make-file "package.info" (load-template :redacted "package.info"))
-        (copy-dir "resources")
-        (copy-file (concatenate `string name ".elf"))
+(defun redpkg (pkg)
+    (make-dir (concatenate `string (pack-name pkg) ".red") 
+        (make-file "package.info" (redacted-package-info pkg))
+        (copy-dir "resources" :can-fail t)
+        (copy-file (concatenate `string (pack-name pkg) ".elf"))
     )
 )
 
-(defun macpkg (name)
-    (make-dir (concatenate `string name ".app") 
+(defun macpkg (pkg)
+    (make-dir (concatenate `string (pack-name pkg) ".app") 
         (make-dir "Contents" 
-            (make-file "Info.plist" (load-template :mac "Info.plist"))
+            (make-file "Info.plist" (apple-info-plist pkg))
             (make-dir "Resources" 
                 (copy-dir "resources")
             ) 
             (make-dir "MacOS" 
-                (copy-file name)
+                (copy-file (concatenate `string (pack-name pkg) ".elf") :destination-name (pack-name pkg))
             )
         )
     )
 )
 
-(defun generate-build (name environment) 
-    ; clear the staging area
-    ; check for presence of a resources folder (optional), config and executable
-    (uiop:chdir (concatenate `string *root* "staging"))
-    (case environment 
-        (:redacted (redpkg name))
-        (:linux (error "Packaging for ~S not implemented yet" environment))
-        (:mac (macpkg name))
-        (:windows (error "Packaging for ~S not implemented yet" environment))
-        (otherwise (error "Unknown environment type ~S" environment))
+(defun clean-staging () (uiop:delete-directory-tree (make-pathname :directory *staging-area*) :validate t :if-does-not-exist :ignore))
+
+(defun generate-build (pkg environment &key (clean t)) 
+    (if clean (clean-staging))
+    (make-dir "staging"
+        (case environment 
+            (:redacted (redpkg pkg))
+            (:linux (error "Packaging for ~S not implemented yet" environment))
+            (:mac (macpkg pkg))
+            (:windows (error "Packaging for ~S not implemented yet" environment))
+            (otherwise (error "Unknown environment type ~S" environment))
+        )
     )
 )
-
-(generate-build "ghost" :mac)
