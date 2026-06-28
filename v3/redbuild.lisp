@@ -21,6 +21,7 @@
       #:environments 
       #:native 
       #:resolve-compiler
+      #:default-dependencies
     )
 )
 
@@ -67,8 +68,15 @@
 
 (defun local-lib (name &key (path *root-folder*) (lib (format nil "lib~a.a" name)) (subpath "")) 
     (make-instance `lib-class
-        :header (format nil "~a~a" path name)
-        :source (format nil "~a~a~a/~a" path name subpath lib)
+        :header 
+        (cond 
+            ((or (string= name "") (eq name "")) ".")
+            (t (format nil "~a~a" path name))
+        )
+        :source (cond 
+            ((or (string= name "") (eq name "")) nil)
+            (t (format nil "~a~a~a/~a" path name subpath lib))
+            )
     )
 )
 
@@ -102,7 +110,7 @@
 (defmacro glfw (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "glfw"))))))
 (defmacro libc (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "c"))))))
 (defmacro libm (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "m"))))))
-(defun default-dependencies (type targ) (list (redlib targ) (libc type targ) (libm type targ)))
+(defun default-dependencies (type targ) (list (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (libc type targ) (libm type targ)))
 
 (defclass redmod () 
     (
@@ -236,11 +244,11 @@
     )
 )
 
-(defun run (mod) "Run the executable of a redbuild module"
+(defun run (mod &key (args "")) "Run the executable of a redbuild module"
     (let ((namee (redmod-name mod)))
         (uiop:run-program (list "chmod" "+x" (concatenate `string namee (output-type-name mod))))
         (format t "~&=====~a=====~&" namee)
-        (uiop:run-program (concatenate `string "./" namee (output-type-name mod)) :ignore-error-status t :output t)
+        (uiop:run-program (flatten (list (concatenate `string "./" namee (output-type-name mod)) args)) :ignore-error-status t :output t)
         (format t "~&=====~a=====~&" (make-string (length namee) :initial-element #\=))
     )
 )
@@ -276,13 +284,14 @@
     )
 )
 
-(defun quick-build (mod &key add-dependencies run success fail) "Quick redbuild project compilation"
+(defun quick-build (mod &key add-dependencies run success fail (run-args "")) "Quick redbuild project compilation"
     (if (eq add-dependencies t) (setf (redmod-libraries mod) (default-dependencies (redmod-type mod) (redmod-target mod))))
+    (mapcar #'print (cc-cmds (car (redbuild:compile-commands mod))))
     (compile-module mod 
         :success (lambda () 
             (fallback mod)
             (compile-commands mod)
-            (if (and (not (eq :lib (redmod-type mod))) (eq run t)) (run mod))
+            (if (and (not (eq :lib (redmod-type mod))) (eq run t)) (run mod :argsdrun-args))
             (funcall success) 
         ) 
         :fail (lambda () (format t "Compilation failed for ~a" (redmod-name mod)))
