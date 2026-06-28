@@ -22,6 +22,8 @@
       #:native 
       #:resolve-compiler
       #:default-dependencies
+      #:quick-cred
+      #:all-sources
     )
 )
 
@@ -189,7 +191,7 @@
     (concatenate `string (redmod-name mod) (output-type-name mod))
 ))))
 
-(defun run-prog (cmd) (nth-value 2 (uiop:run-program cmd :ignore-error-status t :error-output t)))
+(defun run-prog (cmd) (nth-value 2 (uiop:run-program (flatten cmd) :ignore-error-status t :error-output t)))
 
 (defun replace-extension (path newext) 
     (namestring (make-pathname :type newext :defaults (pathname path))))
@@ -291,12 +293,14 @@
         :success (lambda () 
             (fallback mod)
             (compile-commands mod)
-            (if (and (not (eq :lib (redmod-type mod))) (eq run t)) (run mod :argsdrun-args))
+            (if (and (not (eq :lib (redmod-type mod))) (eq run t)) (run mod :args run-args))
             (funcall success) 
         ) 
         :fail (lambda () (format t "Compilation failed for ~a" (redmod-name mod)))
     )
 )
+
+(defun quick-cred (input-file output-file) (run-prog (list "cred" input-file "-o" output-file)))
 
 ;;; Auto test ;;;
 (defparameter *tester-file* nil)
@@ -304,3 +308,19 @@
 (defmacro dynsrc (&rest libfiles) `(remove nil (append (list ,@libfiles) (list *tester-file*))))
 
 (defun set-tester (name) "Call this function with a filename containing a main function to turn a library into a binary and test it using that tester file. Use dynlib and dynsrc macros to make the changes" (setf *tester-file* name))
+
+(defun last-path-component (path) (first (last (pathname-directory path))))
+(defun is-dot-f (path) (eq (char (file-namestring path) 0) #\.))
+(defun is-dot-d (path) (eq (char (last-path-component path) 0) #\.))
+
+(defun all-sources-in-dir (d extension) 
+    (list 
+        (remove-if-not
+            (lambda (f) (string= extension (pathname-type f))) 
+            (remove-if #'is-dot-f (uiop:directory-files d))
+        )
+        (mapcar (lambda (sd) (all-sources-in-dir sd extension)) (remove-if #'is-dot-d (uiop:subdirectories d)))
+    )
+)
+
+(defun all-sources (extension) (mapcar #'namestring (flatten (all-sources-in-dir (uiop:getcwd) extension))))
