@@ -24,6 +24,7 @@
       #:default-dependencies
       #:quick-cred
       #:all-sources
+      #:all-sources-ignoring
     )
 )
 
@@ -246,11 +247,11 @@
     )
 )
 
-(defun run (mod &key (args "")) "Run the executable of a redbuild module"
+(defun run (mod &key (args nil)) "Run the executable of a redbuild module"
     (let ((namee (redmod-name mod)))
         (uiop:run-program (list "chmod" "+x" (concatenate `string namee (output-type-name mod))))
         (format t "~&=====~a=====~&" namee)
-        (uiop:run-program (flatten (list (concatenate `string "./" namee (output-type-name mod)) args)) :ignore-error-status t :output t)
+        (uiop:run-program (flatten (list (concatenate `string "./" namee (output-type-name mod)) args)) :ignore-error-status t :output t :error-output t)
         (format t "~&=====~a=====~&" (make-string (length namee) :initial-element #\=))
     )
 )
@@ -286,7 +287,7 @@
     )
 )
 
-(defun quick-build (mod &key add-dependencies run success fail (run-args "")) "Quick redbuild project compilation"
+(defun quick-build (mod &key add-dependencies run success fail (run-args nil)) "Quick redbuild project compilation"
     (if (eq add-dependencies t) (setf (redmod-libraries mod) (default-dependencies (redmod-type mod) (redmod-target mod))))
     (mapcar #'print (cc-cmds (car (redbuild:compile-commands mod))))
     (compile-module mod 
@@ -294,7 +295,7 @@
             (fallback mod)
             (compile-commands mod)
             (if (and (not (eq :lib (redmod-type mod))) (eq run t)) (run mod :args run-args))
-            (funcall success) 
+            (if (not (eq success nil)) (funcall success))
         ) 
         :fail (lambda () (format t "Compilation failed for ~a" (redmod-name mod)))
     )
@@ -324,3 +325,7 @@
 )
 
 (defun all-sources (extension) (mapcar #'namestring (flatten (all-sources-in-dir (uiop:getcwd) extension))))
+
+(defmacro all-sources-ignoring (extension lst)
+   `(remove-if (lambda (s) (member (file-namestring s) ,lst :test #'string-equal)) (redbuild:all-sources ,extension))
+)
