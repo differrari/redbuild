@@ -111,9 +111,10 @@
 
 (defmacro redlib (targ) (local-lib "redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a"))))
 (defmacro glfw (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "glfw"))))))
+(defmacro gl (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (:mac (system-lib "OpenGL")) (otherwise (system-lib "GL"))))))
 (defmacro libc (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "c"))))))
 (defmacro libm (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "m"))))))
-(defun default-dependencies (type targ) (list (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (libc type targ) (libm type targ)))
+(defun default-dependencies (type targ) (list (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (gl type targ) (glfw type targ) (libc type targ) (libm type targ)))
 
 (defclass redmod () 
     (
@@ -301,7 +302,7 @@
     )
 )
 
-(defun quick-cred (input-file output-file) (run-prog (list "cred" input-file "-o" output-file)))
+(defun quick-cred (input-file output-file) (nth-value 2 (uiop:run-program (list "cred" input-file "-o" output-file) :output t :error-output t)))
 
 ;;; Auto test ;;;
 (defparameter *tester-file* nil)
