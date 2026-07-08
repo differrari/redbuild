@@ -288,8 +288,9 @@
     )
 )
 
-(defun quick-build (mod &key add-dependencies run success fail (run-args nil)) "Quick redbuild project compilation"
-    (if (eq add-dependencies t) (setf (redmod-libraries mod) (default-dependencies (redmod-type mod) (redmod-target mod))))
+(defun quick-build (mod &key add-dependencies (debug-symbols t) run success fail (run-args nil)) "Quick redbuild project compilation"
+    (if (eq add-dependencies t) (setf (redmod-libraries mod) (concatenate `list (redmod-libraries mod) (default-dependencies (redmod-type mod) (redmod-target mod)))))
+    (if (eq debug-symbols t) (setf (redmod-flags mod) (concatenate `list (list "-g") (redmod-flags mod))))
     (mapcar #'print (cc-cmds (car (redbuild:compile-commands mod))))
     (compile-module mod 
         :success (lambda () 
