@@ -34,11 +34,11 @@
 
 (deftype environments () '(member :redacted :linux :mac :windows))
 (defun native ()
-    (if (uiop:os-windows-p) :windows 
-        (if (uiop:os-unix-p) :linux
-            (if (uiop:os-macosx-p) :mac
-                :redacted)
-        )
+    (cond 
+        ((uiop:os-windows-p) :windows)
+        ((uiop:os-macosx-p) :mac)
+        ((uiop:os-unix-p) :linux)
+        (t :redacted)
     )
 )
 
@@ -67,7 +67,19 @@
             :accessor lib-source)
     )
 )
-(defun lib-to-include (lib) (let ((inc (lib-include lib))) (if (eq (length inc) 0) nil (concatenate `string "-I" inc))))
+(defun lib-to-include (l) 
+    (cond 
+        ((eq l nil) nil) 
+        (t 
+            (let ((inc (lib-include l)))
+                (if (eq (length inc) 0) 
+                    nil 
+                (concatenate `string "-I" inc)
+                )
+            )
+        )
+    )
+)
 
 (defun local-lib (name &key (path *root-folder*) (lib (format nil "lib~a.a" name)) (subpath "")) 
     (make-instance `lib-class
@@ -79,7 +91,7 @@
         :source (cond 
             ((or (string= name "") (eq name "")) nil)
             (t (format nil "~a~a~a/~a" path name subpath lib))
-            )
+        )
     )
 )
 
@@ -93,7 +105,14 @@
 (defun system-fw (name) 
     (make-instance `lib-class
         :header ""
-        :source (format nil "-framework ~a" name)
+        :source (list "-framework" name)
+    )
+)
+
+(defun link-targ (p inc-path link-path) 
+    (make-instance `lib-class
+        :header (format nil "~a/~a" p inc-path)
+        :source (format nil "-L~a/~a" p link-path)
     )
 )
 
@@ -109,12 +128,12 @@
     )
 )
 
-(defmacro redlib (targ) (local-lib "redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a"))))
-(defmacro glfw (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "glfw"))))))
-(defmacro gl (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (:mac (system-lib "OpenGL")) (otherwise (system-lib "GL"))))))
-(defmacro libc (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "c"))))))
-(defmacro libm (type targ) (case type (:bin ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "m"))))))
-(defun default-dependencies (type targ) (list (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (gl type targ) (glfw type targ) (libc type targ) (libm type targ)))
+(defun redlib (targ) (local-lib "redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a"))))
+(defun glfw (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "glfw"))))))
+(defun gl   (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (:mac (system-fw "OpenGL")) (otherwise (system-lib "GL"))))))
+(defun libc (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "c"))))))
+(defun libm (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "m"))))))
+(defun default-dependencies (type targ) (list (if (eq t t) (link-targ "/opt/homebrew" "include" "lib") ()) (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (glfw type targ) (libc type targ) (libm type targ) (gl type targ)))
 
 (defclass redmod () 
     (
@@ -188,7 +207,7 @@
     (redmod-flags mod)
     (remove nil (mapcar #'lib-to-include (redmod-libraries mod)))
     (redmod-sources mod) 
-    (mapcar #'lib-source (redmod-libraries mod))
+    (mapcar #'lib-source (remove nil (redmod-libraries mod)))
     "-o" 
     (concatenate `string (redmod-name mod) (output-type-name mod))
 ))))
