@@ -1,0 +1,38 @@
+### Makefile for simplemake ###
+# some projects may contain a simplemake file.
+# this file contains a newline-separated list of .c files to be compiled into a library
+# this Makefile makes all the necessary assumptions and compiles the library
+#######
+
+BASE_FLAGS := -I. -I$HOME/redlib
+
+BUILD_DIR := ./sbuild
+
+CLEAN_OBJS := $(shell find -name "*.o")
+C_SRC   := $(shell cat simplemake | xargs -n1 find . -name)
+OBJ     := $(C_SRC:%.c=$(BUILD_DIR)/%.o)
+
+TARGET  := $(shell echo "../lib$(notdir $(CURDIR)).a")
+
+.PHONY: all clean prepare
+
+all: prepare $(TARGET)
+
+prepare:
+	mkdir -p $(BUILD_DIR)
+	@echo "C Sources $(C_SRC)"
+
+$(TARGET): $(OBJ)
+	@echo "Finishing build $(ARCH)"
+	@echo $(addprefix $(BUILD_DIR)/,$(notdir $(OBJ)))
+	ar rcs $@ $(OBJ)
+
+$(BUILD_DIR)/%.o: %.c
+	gcc -std=c99 $(BASE_FLAGS) -c $< -o $@
+
+clean:
+	rm $(CLEAN_OBJS) $(CLEAN_DEPS) $(TARGET)
+	rm -r $(BUILD_DIR)
+
+-include $(DEP)
+
