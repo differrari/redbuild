@@ -218,7 +218,7 @@
 (defun replace-extension (path newext) 
     (namestring (make-pathname :type newext :defaults (pathname path))))
 
-(defun lib-command-list (includes src) (flatten (list "gcc" includes "-c" src "-o" (replace-extension src "o"))))
+(defun lib-command-list (includes src) (flatten (list "gcc" "-std=c99" includes "-c" src "-o" (replace-extension src "o"))))
 
 (defun lib-command (includes src) (uiop:run-program (lib-command-list includes src) :ignore-error-status t :error-output t))
 
