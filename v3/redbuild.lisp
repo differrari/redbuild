@@ -185,6 +185,7 @@
 
 (defun make-command (mod) (flatten (remove nil (list 
     (resolve-compiler *current-env* *compiler*)
+    "-std=c99"
     (redmod-flags mod)
     (remove nil (mapcar #'lib-to-include (redmod-libraries mod)))
     (redmod-sources mod) 
