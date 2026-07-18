@@ -14,6 +14,8 @@
       #:run 
       #:compile-module
       #:make-instance
+      #:make
+      #:build-dep
       #:redmod 
       #:local-lib 
       #:system-lib 
@@ -41,8 +43,6 @@
         (t :redacted)
     )
 )
-
-(defparameter *current-env* :linux)
 
 (defun resolve-compiler (environment compiler-name) 
     (case environment 
@@ -133,7 +133,7 @@
 (defun gl   (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (:mac (system-fw "OpenGL")) (otherwise (system-lib "GL"))))))
 (defun libc (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "c"))))))
 (defun libm (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "m"))))))
-(defun default-dependencies (type targ) (list (if (eq t t) (link-targ "/opt/homebrew" "include" "lib") ()) (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (glfw type targ) (libc type targ) (libm type targ) (gl type targ)))
+(defun default-dependencies (type targ) (list (if (eq targ :mac) (link-targ "/opt/homebrew" "include" "lib") ()) (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (glfw type targ) (libc type targ) (libm type targ) (gl type targ)))
 
 (defclass redmod () 
     (
@@ -203,8 +203,9 @@
 )
 
 (defun make-command (mod) (flatten (remove nil (list 
-    (resolve-compiler *current-env* *compiler*)
+    (resolve-compiler (redmod-target mod) *compiler*)
     "-std=c99"
+    (if (eq (redmod-target mod) :redacted) (list "-ffreestanding" "-nostdlib"))
     (redmod-flags mod)
     (remove nil (mapcar #'lib-to-include (redmod-libraries mod)))
     (redmod-sources mod) 
@@ -218,18 +219,18 @@
 (defun replace-extension (path newext) 
     (namestring (make-pathname :type newext :defaults (pathname path))))
 
-(defun lib-command-list (includes src) (flatten (list "gcc" "-std=c99" includes "-c" src "-o" (replace-extension src "o"))))
+(defun lib-command-list (mod includes src) (flatten (list (resolve-compiler (redmod-target mod) *compiler*) "-std=c99" includes "-c" src "-o" (replace-extension src "o"))))
 
-(defun lib-command (includes src) (uiop:run-program (lib-command-list includes src) :ignore-error-status t :error-output t))
+(defun lib-command (mod includes src) (uiop:run-program (lib-command-list mod includes src) :ignore-error-status t :error-output t))
 
-(defun lib-assemble-list (srcs output) (flatten (list "ar" "rcs" output (mapcar (lambda (a) (replace-extension a "o")) srcs))))
+(defun lib-assemble-list (mod srcs output) (flatten (list (resolve-compiler (redmod-target mod) "ar") "rcs" output (mapcar (lambda (a) (replace-extension a "o")) srcs))))
 
-(defun lib-assemble (srcs output) (nth-value 2 (uiop:run-program (lib-assemble-list srcs output) :ignore-error-status t :error-output t)))
+(defun lib-assemble (mod srcs output) (nth-value 2 (uiop:run-program (lib-assemble-list mod srcs output) :ignore-error-status t :error-output t)))
 
 (defun lib-compile (mod) 
     (let ((libs (flatten (remove nil (mapcar #'lib-to-include (redmod-libraries mod))))))
-        (mapcar (lambda (a) (lib-command libs a)) (redmod-sources mod))
-        (lib-assemble (redmod-sources mod) (concatenate `string (redmod-name mod) (output-type-name mod)))
+        (mapcar (lambda (a) (lib-command mod libs a)) (redmod-sources mod))
+        (lib-assemble mod (redmod-sources mod) (concatenate `string (redmod-name mod) (output-type-name mod)))
     )
 )
 
@@ -240,13 +241,13 @@
                 (make-instance `comp-cmd 
                     :file-name a
                     :out (replace-extension a "o")
-                    :cmds (flatten (lib-command-list libs a))
+                    :cmds (flatten (lib-command-list mod libs a))
                 )
             ) (redmod-sources mod))
             (list (make-instance `comp-cmd 
                 :file-name (first (redmod-sources mod))
                 :out (concatenate `string (redmod-name mod) (output-type-name mod))
-                :cmds (lib-assemble-list (redmod-sources mod) (concatenate `string (redmod-name mod) (output-type-name mod)))
+                :cmds (lib-assemble-list mod (redmod-sources mod) (concatenate `string (redmod-name mod) (output-type-name mod)))
             ))
         )
     )
@@ -302,8 +303,31 @@
     )
 )
 
+(defmacro make (path &rest args) 
+    `(uiop:run-program (list "make" "-C" ,path ,@args))
+)
+
+(defmacro tmp-switch-dir (name &body body)
+    `(progn 
+        (let ((old_name (uiop:getcwd)))
+        (uiop:chdir ,name)
+        (print (uiop:getcwd))
+        ,@body
+        (uiop:chdir old_name)
+        )
+    )
+)
+
+(defun build-dep (path)
+    (tmp-switch-dir path
+        (uiop:run-program (list "sbcl" "--script" "build.lisp"))
+    )
+)
+
 (defun fallback (mod) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
     (with-open-file (stream #p"simplemake" :direction :output :if-exists :supersede)
+        (format stream "~&# Compile these files against glfw, libc, libm and https://github.com/differrari/redlib/")
+        (format stream "~&# or use using https://github.com/differrari/redbuild/blob/main/Simplemakefile")
         (format stream "~&~{~a~&~}~&" (redmod-sources mod))
     )
 )

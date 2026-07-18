@@ -4,12 +4,12 @@
 # this Makefile makes all the necessary assumptions and compiles the library
 #######
 
-BASE_FLAGS := -I. -I$HOME/redlib
+BASE_FLAGS := -I. -I$(HOME)/redlib
 
 BUILD_DIR := ./sbuild
 
 CLEAN_OBJS := $(shell find -name "*.o")
-C_SRC   := $(shell cat simplemake | xargs -n1 find . -name)
+C_SRC   := $(shell sed '/^[[:space:]]*#/d' simplemake | xargs -n1 find . -name)
 OBJ     := $(C_SRC:%.c=$(BUILD_DIR)/%.o)
 
 TARGET  := $(shell echo "../lib$(notdir $(CURDIR)).a")
