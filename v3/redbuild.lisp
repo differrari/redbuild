@@ -205,7 +205,7 @@
 (defun make-command (mod) (flatten (remove nil (list 
     (resolve-compiler (redmod-target mod) *compiler*)
     "-std=c99"
-    (if (eq (redmod-target mod) :redacted) (list "-ffreestanding" "-nostdlib"))
+    (if (eq (redmod-target mod) :redacted) (list "-Wl,-emain" "-ffreestanding" "-nostdlib"))
     (redmod-flags mod)
     (remove nil (mapcar #'lib-to-include (redmod-libraries mod)))
     (redmod-sources mod) 
