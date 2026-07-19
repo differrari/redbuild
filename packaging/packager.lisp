@@ -1,11 +1,11 @@
-(load "../v3/redbuild.lisp")
-(load "~/redlisp/utils.lisp")
-(load "common.lisp")
-(load "templates.lisp")
+(load (merge-pathnames "../v3/redbuild.lisp" *load-truename*))
+(load (merge-pathnames "~/redlisp/utils.lisp" *load-truename*))
+(load (merge-pathnames "common.lisp" *load-truename*))
+(load (merge-pathnames "templates.lisp" *load-truename*))
 
 (defparameter *root* (namestring (uiop:getcwd)))
-(defparameter *staging-area* (concatenate `string *root* "staging"))
-(defparameter *input-area* (concatenate `string *root* "input"))
+(defparameter *staging-area* (concatenate `string *root* ""))
+(defparameter *input-area* (concatenate `string *root* ""))
 
 (defun get-folder-for-type (type) (case type 
     (:redacted "Redacted")
@@ -85,9 +85,9 @@
 
 (defun clean-staging () (uiop:delete-directory-tree (make-pathname :directory *staging-area*) :validate t :if-does-not-exist :ignore))
 
-(defun generate-build (pkg environment &key (clean t)) 
-    (if clean (clean-staging))
-    (make-dir "staging"
+(defun generate-build (pkg environment &key (clean nil)) 
+    ; (if clean (clean-staging))
+    ; (make-dir "staging"
         (case environment 
             (:redacted (redpkg pkg))
             (:linux (linuxpkg pkg))
@@ -95,5 +95,5 @@
             (:windows (error "Packaging for ~S not implemented yet" environment))
             (otherwise (error "Unknown environment type ~S" environment))
         )
-    )
+    ; )
 )

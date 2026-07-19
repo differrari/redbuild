@@ -1,5 +1,5 @@
 (load "~/redlisp/utils.lisp")
-(load "common.lisp")
+(load (merge-pathnames "common.lisp" *load-truename*))
 
 (defmacro multiline (&rest strings)
   `(with-output-to-string (stream)

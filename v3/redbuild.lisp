@@ -22,11 +22,14 @@
       #:system-fw 
       #:environments 
       #:native 
+      #:dyn-target
+      #:set-global-target
       #:resolve-compiler
       #:default-dependencies
       #:quick-cred
       #:all-sources
       #:all-sources-ignoring
+      #:install
     )
 )
 
@@ -41,6 +44,19 @@
         ((uiop:os-macosx-p) :mac)
         ((uiop:os-unix-p) :linux)
         (t :redacted)
+    )
+)
+
+(defvar *global-target* nil)
+
+(defun set-global-target (type) "Set a global target to compile all dependencies that use dyn-target against"
+    (if (eq *global-target* nil) (setf *global-target* type))
+)
+
+(defun dyn-target () "Compile to the current system unless global-target is set"
+    (cond 
+        ((not (eq *global-target* nil)) *global-target*)
+        (t (native))
     )
 )
 
@@ -93,6 +109,10 @@
             (t (format nil "~a~a~a/~a" path name subpath lib))
         )
     )
+)
+
+(defun install (src &key (location (concatenate `string (uiop:getenv "HOME") "/os_repo/applications/")))
+    (uiop:run-program (list "cp" "-r" src location) :output t :error-output t)
 )
 
 (defun system-lib (name) 
@@ -304,7 +324,7 @@
 )
 
 (defmacro make (path &rest args) 
-    `(uiop:run-program (list "make" "-C" ,path ,@args))
+    `(uiop:run-program (list "make" "-C" ,path ,@args) :output t :error-output t)
 )
 
 (defmacro tmp-switch-dir (name &body body)
@@ -320,7 +340,7 @@
 
 (defun build-dep (path)
     (tmp-switch-dir path
-        (uiop:run-program (list "sbcl" "--script" "build.lisp"))
+        (load (concatenate `string path "/build.lisp"))
     )
 )
 
@@ -349,7 +369,7 @@
 
 (defun quick-cred (input-file output-file) (nth-value 2 (uiop:run-program (list "cred" input-file "-o" output-file) :output t :error-output t)))
 
-;;; Auto test ;;;
+;;; test lib as binary ;;;
 (defparameter *tester-file* nil)
 (defmacro dynlib () (if *tester-file* :bin :lib))
 (defmacro dynsrc (&rest libfiles) `(remove nil (append (list ,@libfiles) (list *tester-file*))))
