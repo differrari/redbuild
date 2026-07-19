@@ -293,7 +293,7 @@
     (let ((namee (redmod-name mod)))
         (uiop:run-program (list "chmod" "+x" (concatenate `string namee (output-type-name mod))))
         (format t "~&=====~a=====~&" namee)
-        (uiop:run-program (flatten (list (concatenate `string "./" namee (output-type-name mod)) args)) :ignore-error-status t :output t :error-output t)
+        (uiop:run-program (flatten (list (concatenate `string "./" namee (output-type-name mod)) args)) :ignore-error-status nil :output t :error-output t)
         (format t "~&=====~a=====~&" (make-string (length namee) :initial-element #\=))
     )
 )
