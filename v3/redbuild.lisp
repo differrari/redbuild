@@ -321,6 +321,7 @@
         (format stream "~{{~&~a}~^,~&~}" (mapcar #'formatcc *compcmds*))
         (format stream "]")
     )
+    (setf *compcmds* '())
 )
 
 (defmacro make (path &rest args) 
