@@ -239,7 +239,7 @@
 (defun replace-extension (path newext) 
     (namestring (make-pathname :type newext :defaults (pathname path))))
 
-(defun lib-command-list (mod includes src) (flatten (list (resolve-compiler (redmod-target mod) *compiler*) "-std=c99" includes "-c" src "-o" (replace-extension src "o"))))
+(defun lib-command-list (mod includes src) (flatten (list (resolve-compiler (redmod-target mod) *compiler*) "-std=c99" includes (redmod-flags mod) "-c" src "-o" (replace-extension src "o"))))
 
 (defun lib-command (mod includes src) (uiop:run-program (lib-command-list mod includes src) :ignore-error-status t :error-output t))
 
