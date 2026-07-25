@@ -83,6 +83,15 @@
     (uiop:run-program (list "linuxdeploy.AppImage" "--appdir" "AppDir" "--output" "appimage") :output t :error-output t)
 )
 
+(defun winpkg (pkg) 
+    (make-dir (concatenate `string (pack-name pkg) "-win")
+        (copy-dir "resources")
+        (let ((name (concatenate `string (pack-name pkg) ".exe")))
+            (copy-file name :destination-name name)
+        )
+    )
+)
+
 (defun clean-staging () (uiop:delete-directory-tree (make-pathname :directory *staging-area*) :validate t :if-does-not-exist :ignore))
 
 (defun generate-build (pkg environment &key (clean nil)) 
@@ -92,7 +101,7 @@
             (:redacted (redpkg pkg))
             (:linux (linuxpkg pkg))
             (:mac (macpkg pkg))
-            (:windows (error "Packaging for ~S not implemented yet" environment))
+            (:windows (winpkg pkg))
             (otherwise (error "Unknown environment type ~S" environment))
         )
     ; )
