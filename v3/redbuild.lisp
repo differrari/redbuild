@@ -239,7 +239,7 @@
 (defun replace-extension (path newext) 
     (namestring (make-pathname :type newext :defaults (pathname path))))
 
-(defun lib-command-list (mod includes src) (flatten (list (resolve-compiler (redmod-target mod) *compiler*) "-std=c99" includes "-c" src "-o" (replace-extension src "o"))))
+(defun lib-command-list (mod includes src) (flatten (list (resolve-compiler (redmod-target mod) *compiler*) "-std=c99" includes (redmod-flags mod) "-c" src "-o" (replace-extension src "o"))))
 
 (defun lib-command (mod includes src) (uiop:run-program (lib-command-list mod includes src) :ignore-error-status t :error-output t))
 
@@ -321,6 +321,7 @@
         (format stream "~{{~&~a}~^,~&~}" (mapcar #'formatcc *compcmds*))
         (format stream "]")
     )
+    (setf *compcmds* '())
 )
 
 (defmacro make (path &rest args) 
@@ -344,11 +345,15 @@
     )
 )
 
+(defun relativize (path)
+    (uiop:enough-pathname (pathname path) (uiop:getcwd))
+)
+
 (defun fallback (mod) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
     (with-open-file (stream #p"simplemake" :direction :output :if-exists :supersede)
         (format stream "~&# Compile these files against glfw, libc, libm and https://github.com/differrari/redlib/")
         (format stream "~&# or use using https://github.com/differrari/redbuild/blob/main/Simplemakefile")
-        (format stream "~&~{~a~&~}~&" (redmod-sources mod))
+        (format stream "~&~{~a~&~}~&" (mapcar #'relativize (redmod-sources mod)))
     )
 )
 
