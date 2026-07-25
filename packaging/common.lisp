@@ -3,6 +3,10 @@
         :initarg :name
         :type string
         :accessor pack-name)
+    (exec
+        :initarg :exec
+        :type string
+        :accessor pack-exec)
     (author
         :initarg :author
         :type string

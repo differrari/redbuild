@@ -64,11 +64,13 @@
             (make-file "Info.plist" (apple-info-plist pkg))
             (make-dir "Resources" 
                 (copy-dir "resources")
+                (copy-file (concatenate `string (pack-name pkg) ".icns") :destination-name "AppIcon.icns" :can-fail t)
             ) 
             (make-dir "MacOS" 
-                (copy-file (concatenate `string (pack-name pkg) ".elf") :destination-name (pack-name pkg))
+                (copy-file (pack-exec pkg) :destination-name (pack-name pkg))
             )
         )
+        (uiop:run-program (list "touch" (concatenate `string (pack-name pkg) ".app")) :output t :error-output t)
     )
 )
 
