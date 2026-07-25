@@ -53,9 +53,9 @@
     	"   <key>CFBundleExecutable</key>"
     	(prop "   <string>~a</string>" (pack-name pkg))
         "   <key>CFBundleIconFile</key>"
-        "   <string>AppIcon-Release</string>"
+        "   <string>AppIcon</string>"
         "   <key>CFBundleIconName</key>"
-        "   <string>AppIcon-Release</string>"
+        "   <string>AppIcon</string>"
         ; "   <key>CFBundleIdentifier</key>"
         ; (prop " <string>~a</string>" (pack-id pkg))
         "   <key>CFBundleInfoDictionaryVersion</key>"
