@@ -30,6 +30,7 @@
       #:all-sources
       #:all-sources-ignoring
       #:install
+      #:lib-class
     )
 )
 
@@ -229,7 +230,7 @@
     (redmod-flags mod)
     (remove nil (mapcar #'lib-to-include (redmod-libraries mod)))
     (redmod-sources mod) 
-    (mapcar #'lib-source (remove nil (redmod-libraries mod)))
+    (remove-if (lambda (l) (or (eq l nil) (equal l ""))) (mapcar #'lib-source (remove-if (lambda (l) (or (eq l nil) (equal l ""))) (redmod-libraries mod))))
     "-o" 
     (concatenate `string (redmod-name mod) (output-type-name mod))
 ))))

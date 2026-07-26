@@ -88,7 +88,7 @@
 (defun winpkg (pkg) 
     (make-dir (concatenate `string (pack-name pkg) "-win")
         (copy-dir "resources")
-        (let ((name (concatenate `string (pack-name pkg) ".exe")))
+        (let ((name (concatenate `string (pack-exec pkg) ".exe")))
             (copy-file name :destination-name name)
         )
     )
