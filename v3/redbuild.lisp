@@ -150,11 +150,12 @@
 )
 
 (defun redlib (targ) (local-lib "redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a"))))
-(defun glfw (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "glfw"))))))
-(defun gl   (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (:mac (system-fw "OpenGL")) (otherwise (system-lib "GL"))))))
-(defun libc (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "c"))))))
-(defun libm (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "m"))))))
-(defun default-dependencies (type targ) (list (if (eq targ :mac) (link-targ "/opt/homebrew" "include" "lib") ()) (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (glfw type targ) (libc type targ) (libm type targ) (gl type targ)))
+(defun glfw     (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "glfw"))))))
+(defun raylib   (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (local-lib "raylib" :lib "src/libraylib.a"))))))
+(defun gl       (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (:mac (system-fw "OpenGL")) (otherwise (system-lib "GL"))))))
+(defun libc     (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "c"))))))
+(defun libm     (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "m"))))))
+(defun default-dependencies (type targ) (list (if (eq targ :mac) (link-targ "/opt/homebrew" "include" "lib") ()) (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (raylib type targ) (libc type targ) (libm type targ) (gl type targ)))
 
 (defclass redmod () 
     (
