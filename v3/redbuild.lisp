@@ -353,7 +353,7 @@
 
 (defun fallback (mod) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
     (with-open-file (stream #p"simplemake" :direction :output :if-exists :supersede)
-        (format stream "~&# Compile these files against glfw, libc, libm and https://github.com/differrari/redlib/")
+        (format stream "~&# Compile these files against raylib, libc, libm and https://github.com/differrari/redlib/")
         (format stream "~&# or use using https://github.com/differrari/redbuild/blob/main/Simplemakefile")
         (format stream "~&~{~a~&~}~&" (mapcar #'relativize (redmod-sources mod)))
     )
