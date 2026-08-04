@@ -75,6 +75,13 @@
 )
 
 (defun linuxpkg (pkg) 
+    (make-dir (concatenate `string (pack-name pkg) "-lin")
+        (copy-dir "resources")
+        (copy-file (concatenate `string (pack-exec pkg) ".elf") :destination-name (pack-name pkg))
+    )
+)
+
+(defun appimgpkg (pkg) 
     (make-dir "AppDir"
         (make-executable (make-file "AppRun" (appimage-apprun pkg)))
         (copy-file (concatenate `string (pack-name pkg) ".elf") :destination-name (pack-name pkg))

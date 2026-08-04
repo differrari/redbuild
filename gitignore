@@ -15,6 +15,9 @@ compile_commands.json
 .clangd
 .DS_STORE
 *.d
+*-lin
+*-win
+*.app
 *.red
 *.r
 trace
