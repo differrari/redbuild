@@ -152,10 +152,10 @@
 (defun redlib (targ) (local-lib "redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a"))))
 (defun glfw     (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "glfw"))))))
 (defun raylib   (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (local-lib "raylib" :lib "src/libraylib.a"))))))
-(defun gl       (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (:mac (system-fw "OpenGL")) (otherwise (system-lib "GL"))))))
+(defun gl       (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (:mac (list (system-fw "IOKit") (system-fw "CoreFoundation") (system-fw "CoreGraphics") (system-fw "Cocoa"))) (otherwise (system-lib "GL"))))))
 (defun libc     (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "c"))))))
 (defun libm     (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "m"))))))
-(defun default-dependencies (type targ) (list (if (eq targ :mac) (link-targ "/opt/homebrew" "include" "lib") ()) (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (raylib type targ) (libc type targ) (libm type targ) (gl type targ)))
+(defun default-dependencies (type targ) (flatten (list (if (eq targ :mac) (link-targ "/opt/homebrew" "include" "lib") ()) (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (raylib type targ) (libc type targ) (libm type targ) (gl type targ))))
 
 (defclass redmod () 
     (
@@ -227,7 +227,7 @@
 (defun make-command (mod) (flatten (remove nil (list 
     (resolve-compiler (redmod-target mod) *compiler*)
     "-std=c99"
-    (if (eq (redmod-target mod) :redacted) (list "-Wl,-emain" "-ffreestanding" "-nostdlib"))
+    (if (eq (redmod-target mod) :redacted) (list "-Wl,-emain" "-ffreestanding" "-nostdlib") (list "-DCROSS"))
     (redmod-flags mod)
     (remove nil (mapcar #'lib-to-include (redmod-libraries mod)))
     (redmod-sources mod) 
