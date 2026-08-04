@@ -22,3 +22,4 @@ packaging/input/
 packaging/staging/
 packaging/setup.lisp
 playground/
+AppDir/

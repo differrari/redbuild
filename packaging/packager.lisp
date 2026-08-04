@@ -77,6 +77,7 @@
 (defun linuxpkg (pkg) 
     (make-dir (concatenate `string (pack-name pkg) "-lin")
         (copy-dir "resources")
+        (copy-file "icon.png" :can-fail t)
         (copy-file (concatenate `string (pack-exec pkg) ".elf") :destination-name (pack-name pkg))
     )
 )
@@ -95,6 +96,7 @@
 (defun winpkg (pkg) 
     (make-dir (concatenate `string (pack-name pkg) "-win")
         (copy-dir "resources")
+        (copy-file "icon.png" :can-fail t)
         (let ((name (concatenate `string (pack-exec pkg) ".exe")))
             (copy-file name :destination-name name)
         )
@@ -108,7 +110,7 @@
     ; (make-dir "staging"
         (case environment 
             (:redacted (redpkg pkg))
-            (:linux (linuxpkg pkg))
+            (:linux (linuxpkg pkg) (appimgpkg pkg))
             (:mac (macpkg pkg))
             (:windows (winpkg pkg))
             (otherwise (error "Unknown environment type ~S" environment))
