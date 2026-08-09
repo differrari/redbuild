@@ -42,6 +42,25 @@
     )
 )
 
+(defmacro enter-dir (name &body body)
+    `(progn 
+        (let ((old_name (uiop:getcwd)))
+        (uiop:chdir ,name)
+        ,@body
+        (uiop:chdir old_name)
+        )
+    )
+)
+
+(defun make-mac-icns ()
+    (if (probe-file (parse-namestring (get-input "icon.png")))
+        (progn
+            (uiop:run-program (list "png_to_icns" "-i" "icon.png") :ignore-error-status t)
+            (copy-file "icon.icns" :destination-name "AppIcon.icns" :can-fail t)
+        )
+    )
+)
+
 (defun copy-dir (name &key (can-fail nil))
     (uiop:run-program (list "cp" "-r" (get-input name) (namestring (uiop:getcwd))) :ignore-error-status can-fail)
 )
@@ -62,12 +81,12 @@
     (make-dir (concatenate `string (pack-name pkg) ".app") 
         (make-dir "Contents" 
             (make-file "Info.plist" (apple-info-plist pkg))
-            (make-dir "Resources" 
-                (copy-dir "resources")
-                (copy-file (concatenate `string (pack-name pkg) ".icns") :destination-name "AppIcon.icns" :can-fail t)
-            ) 
+            (copy-dir "resources")
+            (enter-dir "resources"
+                (make-mac-icns)
+            )
             (make-dir "MacOS" 
-                (copy-file (pack-exec pkg) :destination-name (pack-name pkg))
+                (copy-file (concatenate `string (pack-exec pkg) ".elf") :destination-name (pack-name pkg))
             )
         )
         (uiop:run-program (list "touch" (concatenate `string (pack-name pkg) ".app")) :output t :error-output t)
