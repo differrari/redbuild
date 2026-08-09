@@ -14,6 +14,7 @@
         (prop "app_name=~a" (pack-name pkg))
         (prop "app_version=~a" (pack-version pkg))
         (prop "app_author=~a" (pack-author pkg))
+        (prop "app_bundle_id=~a" (pack-id pkg))
     )
 )
 
@@ -56,8 +57,8 @@
         "   <string>AppIcon</string>"
         "   <key>CFBundleIconName</key>"
         "   <string>AppIcon</string>"
-        ; "   <key>CFBundleIdentifier</key>"
-        ; (prop " <string>~a</string>" (pack-id pkg))
+        "   <key>CFBundleIdentifier</key>"
+        (prop " <string>~a</string>" (pack-id pkg))
         "   <key>CFBundleInfoDictionaryVersion</key>"
         "   <string>6.0</string>"
         "   <key>CFBundleName</key>"

@@ -22,4 +22,10 @@
         :type string
         :initform ""
         :accessor pack-categories)
+    (id
+        :initarg :id
+        :type string
+        :initform ""
+        :accessor pack-id
+    )
 ))
