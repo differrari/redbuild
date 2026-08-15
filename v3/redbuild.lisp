@@ -31,12 +31,15 @@
       #:all-sources-ignoring
       #:install
       #:lib-class
+      #:win-flags
     )
 )
 
 (in-package :redbuild)
 
 (defparameter *root-folder* (user-homedir-pathname))
+
+(defmacro win-flags () `(list "-Wl,--defsym,stat64i32=_stat64" "-static"))
 
 (deftype environments () '(member :redacted :linux :mac :windows))
 (defun native ()
@@ -66,7 +69,7 @@
         (:redacted (concatenate `string "aarch64-none-elf-" compiler-name))
         (:linux (concatenate `string "" compiler-name))
         (:mac (concatenate `string "" compiler-name))
-        (:windows (concatenate `string "" compiler-name))
+        (:windows (concatenate `string "x86_64-w64-mingw32ucrt-" compiler-name))
         (otherwise (error "Unknown environment type ~S" compiler-name))
     )
 )
@@ -151,10 +154,29 @@
 
 (defun redlib (targ) (local-lib "redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a"))))
 (defun glfw     (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "glfw"))))))
-(defun raylib   (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (local-lib "raylib" :lib "src/libraylib.a"))))))
-(defun gl       (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (:mac (list (system-fw "IOKit") (system-fw "CoreFoundation") (system-fw "CoreGraphics") (system-fw "Cocoa"))) (otherwise (system-lib "GL"))))))
-(defun libc     (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "c"))))))
-(defun libm     (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "m"))))))
+(defun raylib   (type targ) (case type (:lib ()) (otherwise (case targ 
+    (:redacted ())
+    (:windows (local-lib "raylib-win" :lib "lib/libraylib.a"))
+    (otherwise (local-lib "raylib" :lib "src/libraylib.a"))
+))))
+(defun gl       (type targ) (case type (:lib ()) (otherwise (case targ 
+    (:redacted ()) 
+    (:mac (list (system-fw "IOKit") (system-fw "CoreFoundation") (system-fw "CoreGraphics") (system-fw "Cocoa"))) 
+    (:windows (system-lib "gdi32"))
+    (otherwise (system-lib "GL"))
+))))
+(defun libc     (type targ) (case type (:lib ()) (otherwise (case targ 
+    (:redacted ())
+    (:windows (system-lib "winmm"))
+    (t (system-lib "c"))
+    )))
+)
+(defun libm     (type targ) (case type (:lib ()) (otherwise (case targ 
+    (:redacted ())
+    (:windows ())
+    (t (system-lib "m"))
+    )))
+)
 (defun default-dependencies (type targ) (flatten (list (if (eq targ :mac) (link-targ "/opt/homebrew" "include" "lib") ()) (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (raylib type targ) (libc type targ) (libm type targ) (gl type targ))))
 
 (defclass redmod () 

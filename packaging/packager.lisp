@@ -116,9 +116,7 @@
     (make-dir (concatenate `string (pack-name pkg) "-win")
         (copy-dir "resources")
         (copy-file "icon.png" :can-fail t)
-        (let ((name (concatenate `string (pack-exec pkg) ".exe")))
-            (copy-file name :destination-name name)
-        )
+        (copy-file (concatenate `string (pack-exec pkg) ".elf") :destination-name (concatenate `string (pack-exec pkg) ".exe"))
     )
 )
 
