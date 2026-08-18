@@ -1,5 +1,4 @@
-(load "~/quicklisp/setup.lisp")
-(ql:quickload :uiop)
+(load (merge-pathnames "../vendor/asdf.lisp" *load-truename*))
 
 (defpackage :redbuild
   (:use :common-lisp :uiop/package)
