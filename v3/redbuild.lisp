@@ -31,6 +31,7 @@
       #:install
       #:lib-class
       #:win-flags
+      #:use-diylib
     )
 )
 
@@ -39,6 +40,13 @@
 (defparameter *root-folder* (user-homedir-pathname))
 
 (defmacro win-flags () `(list "-Wl,--defsym,stat64i32=_stat64" "-static"))
+
+(defparameter *diylib* nil)
+(deftype graph-backend () '(member :vulkan :opengl))
+
+(defparameter *diylib-bk* :opengl)
+
+(defun use-diylib (bk) (setf *diylib* t) (setf *diylib-bk* bk))
 
 (deftype environments () '(member :redacted :linux :mac :windows))
 (defun native ()
@@ -151,7 +159,15 @@
     )
 )
 
-(defun redlib (targ) (local-lib "redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a"))))
+(defun redlib (targ) 
+    (if (or (eq targ :redacted) (not (eq *diylib* t)))
+        (local-lib "redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a")))
+        (make-instance `lib-class
+            :header (format nil "~a/~a" *root-folder* "/diylib/vendored/redlib")
+            :source (format nil "~a/~a" *root-folder* "/diylib/diylib.a")
+        )  
+    )
+)
 (defun glfw     (type targ) (case type (:lib ()) (otherwise (case targ (:redacted ()) (otherwise (system-lib "glfw"))))))
 (defun raylib   (type targ) (case type (:lib ()) (otherwise (case targ 
     (:redacted ())
@@ -163,6 +179,10 @@
     (:mac (list (system-fw "IOKit") (system-fw "CoreFoundation") (system-fw "CoreGraphics") (system-fw "Cocoa"))) 
     (:windows (system-lib "gdi32"))
     (otherwise (system-lib "GL"))
+))))
+(defun vulk       (type targ) (case type (:lib ()) (otherwise (case targ 
+    (:redacted ()) 
+    (otherwise (system-lib "vulkan"))
 ))))
 (defun libc     (type targ) (case type (:lib ()) (otherwise (case targ 
     (:redacted ())
@@ -176,7 +196,7 @@
     (t (system-lib "m"))
     )))
 )
-(defun default-dependencies (type targ) (flatten (list (if (eq targ :mac) (link-targ "/opt/homebrew" "include" "lib") ()) (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (raylib type targ) (libc type targ) (libm type targ) (gl type targ))))
+(defun default-dependencies (type targ) (flatten (list (if (eq targ :mac) (link-targ "/opt/homebrew" "include" "lib") ()) (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (raylib type targ) (libc type targ) (libm type targ) (if (eq *diylib-bk* :vulkan) (vulk type targ) (gl type targ)))))
 
 (defclass redmod () 
     (
@@ -248,7 +268,7 @@
 (defun make-command (mod) (flatten (remove nil (list 
     (resolve-compiler (redmod-target mod) *compiler*)
     "-std=c99"
-    (if (eq (redmod-target mod) :redacted) (list "-Wl,-emain" "-ffreestanding" "-nostdlib") (list "-DCROSS"))
+    (if (eq (redmod-target mod) :redacted) (list "-Wl,-emain" "-ffreestanding" "-nostdlib") (list "-DCROSS" "-Wl,--exclude-libs,ALL"))
     (redmod-flags mod)
     (remove nil (mapcar #'lib-to-include (redmod-libraries mod)))
     (redmod-sources mod) 
