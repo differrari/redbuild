@@ -15,6 +15,7 @@
       #:make-instance
       #:make
       #:build-dep
+      #:build-vendored-dep
       #:redmod 
       #:local-lib 
       #:system-lib 
@@ -32,6 +33,7 @@
       #:lib-class
       #:win-flags
       #:use-diylib
+      #:vendored-lib
     )
 )
 
@@ -41,7 +43,7 @@
 
 (defmacro win-flags () `(list "-Wl,--defsym,stat64i32=_stat64" "-static"))
 
-(defparameter *diylib* nil)
+(defparameter *diylib* t)
 (deftype graph-backend () '(member :vulkan :opengl))
 
 (defparameter *diylib-bk* :opengl)
@@ -122,6 +124,13 @@
     )
 )
 
+(defun vendored-lib (name &key (lib (format nil "~a.a" name)))
+    (make-instance `lib-class
+        :header (format nil "./external/~a" name)
+        :source (format nil "./external/~a/~a" name lib)
+    )
+)
+
 (defun install (src &key (location (concatenate `string (uiop:getenv "HOME") "/os_repo/applications/")))
     (uiop:run-program (list "cp" "-r" src location) :output t :error-output t)
 )
@@ -196,7 +205,15 @@
     (t (system-lib "m"))
     )))
 )
-(defun default-dependencies (type targ) (flatten (list (if (eq targ :mac) (link-targ "/opt/homebrew" "include" "lib") ()) (local-lib "" :path (uiop:getcwd) :lib "") (redlib targ) (raylib type targ) (libc type targ) (libm type targ) (if (eq *diylib-bk* :vulkan) (vulk type targ) (gl type targ)))))
+(defun default-dependencies (type targ) (flatten (list 
+    (if (eq targ :mac) (link-targ "/opt/homebrew" "include" "lib") ()) 
+    (local-lib "" :path (uiop:getcwd) :lib "") 
+    (redlib targ) 
+    (if (eq *diylib* nil) (raylib type targ))
+    (libc type targ) 
+    (libm type targ) 
+    (if (eq *diylib-bk* :vulkan) (vulk type targ) (gl type targ))
+)))
 
 (defclass redmod () 
     (
@@ -388,6 +405,10 @@
     )
 )
 
+(defun build-vendored-dep (name)
+    (build-dep (format nil "./external/~a" name))
+)
+
 (defun relativize (path)
     (uiop:enough-pathname (pathname path) (uiop:getcwd))
 )
@@ -426,7 +447,17 @@
 
 (defun last-path-component (path) (first (last (pathname-directory path))))
 (defun is-dot-f (path) (eq (char (file-namestring path) 0) #\.))
-(defun is-dot-d (path) (eq (char (last-path-component path) 0) #\.))
+(defun is-dot-d (path) 
+    (if 
+        (eq (last-path-component path) "external")
+        (print "ignoring external")
+    )
+    (or
+        (eq (char (last-path-component path) 0) #\.)
+        (string= (last-path-component path) "external")
+        (string= (last-path-component path) "product")
+    )
+)
 
 (defun all-sources-in-dir (d extension) 
     (list 
