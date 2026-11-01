@@ -37,6 +37,8 @@
       #:vendored-lib
       #:relativize
       #:flatten
+      #:pkginstall
+      #:rebuild-sharedlib
     )
 )
 
@@ -173,7 +175,7 @@
 
 (defun redlib (targ) 
     (if (or (eq targ :redacted) (not (eq *diylib* t)))
-        (local-lib "redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a")))
+        (local-lib "/diylib/vendored/redlib" :lib           (case targ (:redacted "libshared.a") (otherwise "clibshared.a")))
         (make-instance `lib-class
             :header (format nil "~a/~a" *root-folder* "/diylib/vendored/redlib")
             :source (format nil "~a/~a" *root-folder* "/diylib/diylib.a")
@@ -472,4 +474,11 @@
 
 (defmacro all-sources-ignoring (extension lst)
    `(remove-if (lambda (s) (member (namestring (relativize s)) ,lst :test #'string-equal)) (redbuild:all-sources ,extension))
+)
+
+(defun rebuild-sharedlib ()
+    (if (eq (redbuild:dyn-target) :redacted)
+        (redbuild:make "~/diylib/vendored/redlib" "-j")
+        (redbuild:make "~/diylib" "-j")
+    )
 )

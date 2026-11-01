@@ -134,3 +134,15 @@
         )
     ; )
 )
+
+(defun pkginstall (pname pack) 
+    (if (or (eq (redbuild:dyn-target) :redacted) *should_package*)
+        (generate-build pack (redbuild:dyn-target))
+    )
+    (if (eq (redbuild:dyn-target) :redacted)
+        (progn
+            (redbuild:install (concatenate `string pname ".red"))
+            (redbuild:make "~/os" "run")
+        )
+    )
+)
