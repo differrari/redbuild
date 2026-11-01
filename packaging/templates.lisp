@@ -11,10 +11,10 @@
 
 (defun redacted-package-info (pkg) 
     (multiline 
-        (prop "app_name=~a" (pack-name pkg))
-        (prop "app_version=~a" (pack-version pkg))
-        (prop "app_author=~a" (pack-author pkg))
-        (prop "app_bundle_id=~a" (pack-id pkg))
+        (prop "app_name=\"~a\"" (pack-name pkg))
+        (prop "app_version=\"~a\"" (pack-version pkg))
+        (prop "app_author=\"~a\"" (pack-author pkg))
+        (prop "app_bundle_id=\"~a\"" (pack-id pkg))
     )
 )
 

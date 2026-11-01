@@ -2,7 +2,7 @@
 
 echo "Initializing [REDACTED] project"
 
-cp $REDBUILD/package.info $(pwd)/package.info
+# cp $REDBUILD/package.info $(pwd)/package.info
 
 cp $REDBUILD/gitignore $(pwd)/.gitignore
 
