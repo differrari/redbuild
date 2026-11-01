@@ -29,11 +29,14 @@
       #:quick-cred
       #:all-sources
       #:all-sources-ignoring
+      #:all-sources-in-dir
       #:install
       #:lib-class
       #:win-flags
       #:use-diylib
       #:vendored-lib
+      #:relativize
+      #:flatten
     )
 )
 
@@ -448,10 +451,6 @@
 (defun last-path-component (path) (first (last (pathname-directory path))))
 (defun is-dot-f (path) (eq (char (file-namestring path) 0) #\.))
 (defun is-dot-d (path) 
-    (if 
-        (eq (last-path-component path) "external")
-        (print "ignoring external")
-    )
     (or
         (eq (char (last-path-component path) 0) #\.)
         (string= (last-path-component path) "external")
@@ -472,5 +471,5 @@
 (defun all-sources (extension) (mapcar #'namestring (flatten (all-sources-in-dir (uiop:getcwd) extension))))
 
 (defmacro all-sources-ignoring (extension lst)
-   `(remove-if (lambda (s) (member (file-namestring s) ,lst :test #'string-equal)) (redbuild:all-sources ,extension))
+   `(remove-if (lambda (s) (member (namestring (relativize s)) ,lst :test #'string-equal)) (redbuild:all-sources ,extension))
 )

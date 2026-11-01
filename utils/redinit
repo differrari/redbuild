@@ -6,6 +6,12 @@ cp $REDBUILD/package.info $(pwd)/package.info
 
 cp $REDBUILD/gitignore $(pwd)/.gitignore
 
+cp $REDBUILD/build.lisp.template $(pwd)/build.lisp
+
+sed -i -e "s/__APP_NAME__/$(basename $(pwd))/g" build.lisp
+
+cp $REDBUILD/main.c.template $(pwd)/main.c
+
 mkdir -p $(pwd)/resources
 
 echo "[REDACTED] project created"
