@@ -190,7 +190,7 @@
 ))))
 (defun gl       (type targ) (case type (:lib ()) (otherwise (case targ 
     (:redacted ()) 
-    (:mac (list (system-fw "IOKit") (system-fw "CoreFoundation") (system-fw "CoreGraphics") (system-fw "Cocoa"))) 
+    (:mac (list (system-fw "IOKit") (system-fw "CoreFoundation") (system-fw "CoreGraphics") (system-fw "Cocoa") (system-fw "QuartzCore") (system-fw "OpenGL"))) 
     (:windows (system-lib "gdi32"))
     (otherwise (system-lib "GL"))
 ))))
@@ -290,7 +290,7 @@
 (defun make-command (mod) (flatten (remove nil (list 
     (resolve-compiler (redmod-target mod) *compiler*)
     "-std=c99"
-    (if (eq (redmod-target mod) :redacted) (list "-Wl,-emain" "-ffreestanding" "-nostdlib") (list "-DCROSS" "-Wl,--exclude-libs,ALL"))
+    (if (eq (redmod-target mod) :redacted) (list "-Wl,-emain" "-ffreestanding" "-nostdlib") (list "-DCROSS" (if (eq (redmod-target mod) :mac) nil "-Wl,--exclude-libs,ALL")))
     (redmod-flags mod)
     (remove nil (mapcar #'lib-to-include (redmod-libraries mod)))
     (redmod-sources mod) 
@@ -420,7 +420,7 @@
 
 (defun fallback (mod) "Generate a redbuild module fallback simplemake file for compilation with other build systems"
     (with-open-file (stream #p"simplemake" :direction :output :if-exists :supersede)
-        (format stream "~&# Compile these files against raylib, libc, libm and https://github.com/differrari/redlib/")
+        (format stream "~&# Compile these files against raylib, libc, libm and https://github.com/differrari/diylib/")
         (format stream "~&# or use using https://github.com/differrari/redbuild/blob/main/Simplemakefile")
         (format stream "~&~{~a~&~}~&" (mapcar #'relativize (redmod-sources mod)))
     )
